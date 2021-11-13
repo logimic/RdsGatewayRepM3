@@ -2,11 +2,11 @@
 RdsGatewayRepM3 - B&amp;T Gateway
 
 ## Create project
-###Windows
+### Windows
 	build64_2017.bat
 or copy/paste/adapt for another IDE
 
-###Linux
+### Linux
 Debug configuration for make:
 
 	buildMake.sh

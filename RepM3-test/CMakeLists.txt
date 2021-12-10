@@ -1,17 +1,41 @@
 project (repM3-test)
 
-file(GLOB_RECURSE _HDRFILES ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
-file(GLOB_RECURSE _SRCFILES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
-
-source_group("Header Files" FILES ${_HDRFILES})
-source_group("Source Files" FILES ${_SRCFILES})
+#file(GLOB_RECURSE _HDRFILES ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
+#file(GLOB_RECURSE _SRCFILES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-include_directories(${CMAKE_BINARY_DIR})
-include_directories(${CMAKE_SOURCE_DIR}/repM3)
+#include_directories(${CMAKE_BINARY_DIR})
+include_directories(${CMAKE_SOURCE_DIR}/RepM3)
 
-add_executable(${PROJECT_NAME} ${_HDRFILES} ${_SRCFILES})
+#set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+#set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+#set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
-target_link_libraries(${PROJECT_NAME} 
-  repM3
-)
+
+################################
+# Testing
+################################
+if (test)
+  
+# This adds another subdirectory, which has 'project(gtest)'.
+  add_subdirectory(external/googletest)
+
+  # Include the gtest library. gtest_SOURCE_DIR is available due to
+  # 'project(gtest)' above.
+  include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
+
+  ##############
+  # Unit Tests
+  ##############
+  add_executable(runUnitTests main.cpp)
+
+  # Standard linking to gtest stuff.
+  target_link_libraries(runUnitTests gtest gtest_main pthread)
+
+  # Extra linking for the project.
+  #target_link_libraries(runUnitTests arsec_lib)
+
+  # You can also omit NAME and COMMAND. The second argument could be some other
+  # test executable.
+  add_test(run-tests runUnitTests)
+endif()

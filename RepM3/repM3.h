@@ -19,7 +19,7 @@ namespace lgmc {
       return data == (uint8_t)other;
     }
 
-    void operator=(uint other) {
+    void operator=(uint32_t other) {
       data = uint8_t(other);
     }
   };
@@ -51,27 +51,27 @@ namespace lgmc {
   struct System_Compressed_Date {
     UINT16 data;
     
-    void set_day_of_month(uint day) {
+    void set_day_of_month(uint32_t day) {
       data |= (day & 0x1F);
 
     }
-    uint day_of_month() {
+    uint32_t day_of_month() {
       return uint(data &0x1F);
     }
 
-    void set_month(uint month) {
+    void set_month(uint32_t month) {
       data |= (month & 0xF) << 5;
     }
 
-    uint month() {
+    uint32_t month() {
       return uint((data >> 5) & 0xF);
     }
 
-    void set_year(uint year) {
+    void set_year(uint32_t year) {
       data |= (year & 0x7F) << 9;
     }
 
-    uint year() {
+    uint32_t year() {
       return uint((data >> 9) & 0x7F);
     }
 
@@ -236,7 +236,7 @@ namespace lgmc {
     private:
       /* simple crc helper */
       uint8_t crc(const std::vector<uint8_t> &data) {
-        uint val = 0;
+        uint32_t val = 0;
         for(auto x : data) {
           val += x;
         }
@@ -288,8 +288,8 @@ namespace lgmc {
         UINT8 status;
       } data;
 
-    void set_system_settings_page(uint page = 0) { data_sent.data().system_settings_page = page;} 
-    void set_date(uint day_of_month = 0, uint month = 0, uint year = 0) { 
+    void set_system_settings_page(uint32_t page = 0) { data_sent.data().system_settings_page = page;} 
+    void set_date(uint32_t day_of_month = 0, uint32_t month = 0, uint32_t year = 0) { 
       data_sent.data().date.set_day_of_month(day_of_month);
       data_sent.data().date.set_month(month);
       data_sent.data().date.set_year(year);

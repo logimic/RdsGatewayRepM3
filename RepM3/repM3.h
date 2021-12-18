@@ -4,6 +4,7 @@
 #include <vector>
 #include <cstring>
 #include <iostream> 
+#include <sstream>
 #include <algorithm>
 
 namespace lgmc {
@@ -190,8 +191,10 @@ namespace lgmc {
 
         // first and last bytes must be start/stop bytes
         if (d[0] != start_byte || d[d.size()-1] != stop_byte)  {
-          std::cout << "Wrong start or stop byte" << std::endl;
-          return false;
+          std::ostringstream os;
+          os << "Wrong start or stop byte: " << std::hex << unsigned(d[0]);
+          std::logic_error ex(os.str().c_str());
+          throw ex;
         }
 
         // compute crc and verify crc
@@ -199,19 +202,27 @@ namespace lgmc {
         uint8_t crc_data = crc(c);
         
         if (crc_data != d[d.size()-2]) {
-          std::cout << "Wrong crc. Computed:" << crc_data << " received:" << d[d.size()-2];
-          return false;
+          std::ostringstream os;
+          os << "Wrong crc. Computed:" << std::hex << unsigned(crc_data) << " received:" << unsigned(d[d.size()-2]);
+          std::logic_error ex(os.str().c_str());
+          throw ex;
         }
 
         // check number of received elements
         uint8_t nr_of_elements = c[0] + 1;
         if ((c.size() - 2) != nr_of_elements) {
-          std::cout << "Inconsistency in elements count. Expected:" << int(nr_of_elements) << " but get:" << (c.size() - 2) << std::endl;
-          return false;
+          std::ostringstream os;
+          os << "Inconsistency in elements count. Expected:" << unsigned(nr_of_elements) << " but get:" << unsigned(c.size() - 2);
+          std::logic_error ex(os.str().c_str());
+          throw ex;
         }
         
         if (c[1] != m_id) {
-          std::cout << "Invalid ID. Expected:" << m_id << " received:" << c[1] << std::endl;
+          std::ostringstream os;
+          os << "Invalid ID. Expected:" << std::hex << unsigned(m_id) << " received:" << unsigned(c[1]);
+          std::logic_error ex(os.str().c_str());
+          throw ex;
+          
           return false;
         }
         

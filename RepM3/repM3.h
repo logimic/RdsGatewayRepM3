@@ -212,9 +212,15 @@ namespace lgmc {
       // command ids
       enum COMMANDS_TYPE {
         CMD_GET_VERSION = 9,
+        CMD_SET_DATE_AND_TIME = 12,
+        CMD_GET_DATE_AND_TIME = 13,
+        CMD_START_RTC = 14,
         CMD_GET_SETTINGS = 15,
         CMD_SET_SETTINGS = 16,
+        CMD_PRESET_DATE_AND_TIME = 18,
         CMD_SET_SCHEDULE = 19,
+        CMD_CHANGE_RTC_TO_PRESET = 23,
+        CMD_TIME_SYNC = 27,
       };
 
       BaseCommand(){}
@@ -411,9 +417,90 @@ namespace lgmc {
         UINT8 status;
       };
   };
-}
 
 /****************************************************
 ************** Time and date commands ***************
 ****************************************************/
+  class SetTimeAndDateCmd : public BaseCommand {
+    public:
+      SetTimeAndDateCmd()
+      : BaseCommand(COMMANDS_TYPE::CMD_SET_DATE_AND_TIME) {}
+
+      PACK(struct data_send_t {
+        UINT8 time_second;
+        UINT8 time_minute;
+        UINT8 time_hour;
+        UINT8 date_day;
+        UINT8 date_month;
+        UINT8 date_year;
+        UINT8 date_century;
+      });
+
+      struct data_t{
+        UINT8 status;
+      };
+  };
+
+  class GetTimeAndDateCmd : public BaseCommand {
+    public:
+      GetTimeAndDateCmd()
+      : BaseCommand(COMMANDS_TYPE::CMD_SET_DATE_AND_TIME) {}
+
+      PACK(struct data_t {
+        UINT8 time_second;
+        UINT8 time_minute;
+        UINT8 time_hour;
+        UINT8 date_day;
+        UINT8 date_month;
+        UINT8 date_year;
+        UINT8 date_century;
+      });
+  };
+
+  class PresetTimeAndDateCmd : public BaseCommand {
+    public:
+      PresetTimeAndDateCmd()
+      : BaseCommand(COMMANDS_TYPE::CMD_PRESET_DATE_AND_TIME) {}
+
+      PACK(struct data_send_t {
+        UINT8 time_second;
+        UINT8 time_minute;
+        UINT8 time_hour;
+        UINT8 date_day;
+        UINT8 date_month;
+        UINT8 date_year;
+        UINT8 date_century;
+      });
+
+      struct data_t{
+        UINT8 status;
+      };
+  };
+
+  class StartRtc : public BaseCommand {
+    public:
+      StartRtc()
+      : BaseCommand(COMMANDS_TYPE::CMD_PRESET_DATE_AND_TIME) {}
+  };
+
+  class ChangeRtcToPresetCmd : public BaseCommand {
+    public:
+      ChangeRtcToPresetCmd()
+      : BaseCommand(COMMANDS_TYPE::CMD_CHANGE_RTC_TO_PRESET) {}
+
+      struct data_t {
+        UINT8 status;
+        FLAGS8 result;
+      };
+  };
+
+  class TimeSync : public BaseCommand {
+    public:
+      TimeSync()
+      : BaseCommand(COMMANDS_TYPE::CMD_PRESET_DATE_AND_TIME) {}
+  };
+}
+
+
+
 

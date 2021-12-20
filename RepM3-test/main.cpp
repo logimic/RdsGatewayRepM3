@@ -7,6 +7,33 @@
 
 using namespace lgmc;
 
+TEST(flags8, data_types) {
+    FLAGS8 f;
+    f.setf0(true);
+    EXPECT_EQ(f.data, 0x1);
+
+    f.setf1(true);
+    EXPECT_EQ(f.data, 0x3);
+
+    f.setf2(true);
+    EXPECT_EQ(f.data, 0x7);
+
+    f.setf3(true);
+    EXPECT_EQ(f.data, 0xF);
+
+    f.setf4(true);
+    EXPECT_EQ(f.data, 0x1F);
+
+    f.setf5(true);
+    EXPECT_EQ(f.data, 0x3F);
+
+    f.setf6(true);
+    EXPECT_EQ(f.data, 0x7F);
+
+    f.setf7(true);
+    EXPECT_EQ(f.data, 0xFF);
+}
+
 TEST(data_serialize, data_handler) {
     UINT8 test_data{123};
     UINT8 test_data_ret;

@@ -9,6 +9,15 @@
 
 namespace lgmc {
 
+/* definitions for packed structures for GCC and MSC */
+#ifdef __GNUC__
+#define PACK( __Declaration__ ) __Declaration__ __attribute__((__packed__))
+#endif
+
+#ifdef _MSC_VER
+#define PACK( __Declaration__ ) __pragma( pack(push, 1) ) __Declaration__ __pragma( pack(pop))
+#endif
+
   struct UINT8 {
     uint8_t data;
     // compare operator
@@ -49,6 +58,60 @@ namespace lgmc {
     }
   };
 
+  struct UINT14 {
+    uint16_t data = 0;
+
+    UINT14 & operator=(UINT14 & other) {
+      if (this == &other) {
+        return *this;
+      }
+      data = other.data & 0x3FFF; // only 14 byte
+      return *this;
+    }
+  };
+
+  struct FLAGS8 {
+    uint8_t data;
+  };
+
+  struct FLAGS14 {
+    uint16_t data;
+  };
+
+  struct FLAGS16 {
+    uint16_t data;
+  };
+
+  struct FLAGS32 {
+    uint32_t data;
+  };
+
+  struct COMPTIME8 {
+    uint8_t data = 0;
+  };
+
+  struct BATTSTATUS8 {
+
+  };
+
+  struct System_Time {
+    UINT8 second;
+    UINT8 minute;
+    UINT8 hour;
+  };
+
+  struct System_Settings_page0 {
+    UINT14 current_maintained_mode;
+    UINT14 voltage_maintained_mode;
+    UINT14 power_maintained_mode;
+    UINT14 current_emergency_mode;
+    UINT14 voltage_emergency_mode;
+    UINT14 power_emergency_mode;
+    UINT14 test_voltage_lower_limit;
+    UINT14 test_voltage_upper_limit;
+    UINT14 reserved[7];
+  };
+
   struct System_Compressed_Date {
     UINT16 data;
     
@@ -79,6 +142,15 @@ namespace lgmc {
     bool operator==(System_Compressed_Date other) const {
       return data == other.data;
     }
+  };
+
+  struct Test_Schedule {
+    System_Time start_time;
+    FLAGS8 days_of_week;
+    FLAGS32 days_of_month;
+    FLAGS16 months;
+    UINT8 year;
+    UINT8 year_mask;
   };
 
   /* base data template class */
@@ -140,7 +212,9 @@ namespace lgmc {
       // command ids
       enum COMMANDS_TYPE {
         CMD_GET_VERSION = 9,
+        CMD_GET_SETTINGS = 15,
         CMD_SET_SETTINGS = 16,
+        CMD_SET_SCHEDULE = 19,
       };
 
       BaseCommand(){}
@@ -290,10 +364,10 @@ namespace lgmc {
       SetSettingsCmd() 
       : BaseCommand(COMMANDS_TYPE::CMD_SET_SETTINGS) {}
 
-      struct data_send_t {
+      PACK(struct data_send_t {
         UINT8 system_settings_page;
         System_Compressed_Date date;
-      } __attribute__((packed));
+      });
       
       struct data_t {
         UINT8 status;
@@ -307,4 +381,39 @@ namespace lgmc {
     } 
       BaseData<data_send_t> data_sent;
   };
+
+  class GetSettingsCmd : public BaseCommand {
+    public:
+      GetSettingsCmd()
+      : BaseCommand(COMMANDS_TYPE::CMD_GET_SETTINGS) {}
+
+      struct data_send_t {
+        UINT8 system_settings_page;
+      };
+
+      PACK(struct data_t {
+        UINT8 system_settings_page;
+        System_Settings_page0 page;
+      });
+  };
+
+  class SetScheduleCmd : public BaseCommand {
+    public:
+      SetScheduleCmd()
+      : BaseCommand(COMMANDS_TYPE::CMD_SET_SCHEDULE) {}
+
+      PACK(struct data_send_t {
+        UINT8 schedule_selection;
+        Test_Schedule schedule_data;
+      });
+
+      struct data_t{
+        UINT8 status;
+      };
+  };
 }
+
+/****************************************************
+************** Time and date commands ***************
+****************************************************/
+

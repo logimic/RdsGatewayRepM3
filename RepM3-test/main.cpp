@@ -34,6 +34,44 @@ TEST(flags8, data_types) {
     EXPECT_EQ(f.data, 0xFF);
 }
 
+TEST(green_flags, data_types) {
+    GreenFlags f;
+    f.data.setf0(true);
+
+    EXPECT_EQ(f.long_test_pass_report_avail(), true);
+}
+
+TEST(uint14_struct, data_types) {
+    //UINT14 t;
+
+    //t.data = 0xffff;
+
+    //EXPECT_EQ(t.data, 0x3FFF);
+}
+
+
+TEST(comptime8, data_types) {
+    COMPTIME8 t;
+    t.data = 0x40;
+
+    EXPECT_EQ(t.value(), 1);
+}
+
+TEST(batt_status, data_types) {
+    BATTSTATUS8 t;
+    t.data = 0x01;
+
+    EXPECT_EQ(t.cell_status_val(), BATTSTATUS8::CELL_DISCHARGED);
+
+    t.data = 0x03;
+
+    EXPECT_EQ(t.cell_status_val(), BATTSTATUS8::CELL_FULLY_CHARGED);
+
+    t.data = 0x10;
+
+    EXPECT_EQ(t.cell_type_val(), BATTSTATUS8::CELL_SINGLE);
+}
+
 TEST(data_serialize, data_handler) {
     UINT8 test_data{123};
     UINT8 test_data_ret;
@@ -86,14 +124,27 @@ TEST(data_system_compressed_date, data_handler) {
         c.set_year(i);
         EXPECT_EQ(c.year(), i);
     }
-    /*
-    c.set_month(10);
+}
 
-    EXPECT_EQ(c.month(), 10);
+TEST(data_system_compressed_time, data_handler) {
+    
+    for (int i = 0; i <= 29; i++) {
+        System_Compressed_Time c;
+        c.set_seconds(i);
+        EXPECT_EQ(c.seconds(), i);
+    }
 
-    c.set_year(22);
+    for (int i = 0; i <= 59; i++) {
+        System_Compressed_Time c;
+        c.set_minute(i);
+        EXPECT_EQ(c.minute(), i);
+    }
 
-    EXPECT_EQ(c.year(), 22);*/
+    for (int i = 0; i <= 23; i++) {
+        System_Compressed_Time c;
+        c.set_hours(i);
+        EXPECT_EQ(c.hour(), i);
+    }
 }
 
 TEST(command_serialize_base_no_data, command_handler) {

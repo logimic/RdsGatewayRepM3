@@ -18,6 +18,21 @@ namespace lgmc {
 #define PACK( __Declaration__ ) __pragma( pack(push, 1) ) __Declaration__ __pragma( pack(pop))
 #endif
 
+// define generic get/set methods for specific bit
+#define F(nr) \
+  bool f##nr() { \
+    return data & (nr + 1); \
+    } \
+  void setf##nr(bool val) { \
+    if (val) { \
+      data |= (1 << nr); \
+    } else { \
+      data &= ~(1 << nr); \
+    } \
+  } \
+
+
+  // 8-bit unsigned integer 
   struct UINT8 {
     uint8_t data;
     // compare operator
@@ -34,6 +49,21 @@ namespace lgmc {
     }
   };
 
+  // 14-bit unsigned integer
+  // most significant 2 bits of the second byte are unused
+  struct UINT14 {
+    uint16_t data = 0;
+
+    UINT14 & operator=(UINT14 & other) {
+      if (this == &other) {
+        return *this;
+      }
+      data = other.data & 0x3FFF; // only 14 byte
+      return *this;
+    }
+  };
+
+  // 16-bit unsigned integer
   struct UINT16 {
     uint16_t data = 0;
     // compare operator
@@ -58,36 +88,14 @@ namespace lgmc {
     }
   };
 
-  struct UINT14 {
-    uint16_t data = 0;
-
-    UINT14 & operator=(UINT14 & other) {
-      if (this == &other) {
-        return *this;
-      }
-      data = other.data & 0x3FFF; // only 14 byte
-      return *this;
-    }
-  };
-
-  #define F(nr) \
-    bool f##nr() { \
-      return data & (nr + 1); \
-      } \
-    void setf##nr(bool val) { \
-      if (val) { \
-        data |= (1 << nr); \
-      } else { \
-        data &= ~(1 << nr); \
-      } \
-    } \
-
+  // 1 byte containing a set of 8 boolean values (flags) designated F0 to F7
   struct FLAGS8 {
     uint8_t data;
     F(0); F(1); F(2); F(3);
     F(4); F(5); F(6); F(7);
   };
 
+  // 2 bytes containing a set of 14 boolean values (flags) designated F0 to F13
   struct FLAGS14 {
     uint16_t data;
     F(0); F(1); F(2); F(3);
@@ -96,6 +104,7 @@ namespace lgmc {
     F(12); F(13);
   };
 
+  // 2 bytes containing a set of 16 boolean values (flags) designated F0 to F15
   struct FLAGS16 {
     uint16_t data;
     F(0); F(1); F(2); F(3);
@@ -104,6 +113,7 @@ namespace lgmc {
     F(12); F(13); F(14); F(15);
   };
 
+  // 4 byte containing a set of 32 boolean values (flags) designated F0 to F31
   struct FLAGS32 {
     uint32_t data;
     F(0); F(1); F(2); F(3);
@@ -115,40 +125,123 @@ namespace lgmc {
     F(24); F(25); F(26); F(27);
     F(28); F(29); F(30); F(31);
   };
-
+ 
+  // 1 byte representing an integer value between 1 and 1920.
+  // The value of this data is determined by the following expression:
+  // VALUE = (BASE_VALUE + 1) * M
   struct COMPTIME8 {
-    uint8_t data = 0;
+    uint8_t data;
+
+    uint32_t value() {
+      int base_value = data & 0x3F;
+      int m = (data >> 6) & 0x3;
+
+      return (base_value + 1) * m;
+    } 
   };
 
+  // 1 byte containing the status of the cells connected to the RepM3
+  // B0-B3: 4-bit CellStatus Top Cell
+	// B7-B4: 4-bit CellStatus Bottom Cell
   struct BATTSTATUS8 {
+    uint8_t data;
 
+    enum charge_status {
+      CELL_DISCONNECTED = 0,
+      CELL_DISCHARGED = 1,
+      CELL_PART_CHARGED = 2,
+      CELL_FULLY_CHARGED = 3,
+    };
+
+    enum cell_type {
+      CELL_NOT_FITTED = 0,
+      CELL_SINGLE = 1,
+      CELL_DUAL = 2,
+      UNUSED = 3,
+    };
+
+    enum charge_status cell_status_val() {return charge_status(data & 0x0F);}
+    enum cell_type cell_type_val() {return cell_type((data >> 4) & 0xF);}
   };
 
-  struct System_Time {
-    UINT8 second;
-    UINT8 minute;
-    UINT8 hour;
+  // indicate information is available to be downloaded from the RepM3
+  struct GreenFlags {
+    FLAGS16 data;
+
+    bool long_test_pass_report_avail() {return data.f0();}
+    bool short_test_pass_report_avail() {return data.f1();}
+    bool long_test_fail_report_avail() {return data.f2();}
+    bool short_test_fail_report_avail() {return data.f3();}
   };
 
-  struct System_Settings_page0 {
-    UINT14 current_maintained_mode;
-    UINT14 voltage_maintained_mode;
-    UINT14 power_maintained_mode;
-    UINT14 current_emergency_mode;
-    UINT14 voltage_emergency_mode;
-    UINT14 power_emergency_mode;
-    UINT14 test_voltage_lower_limit;
-    UINT14 test_voltage_upper_limit;
-    UINT14 reserved[7];
+  // indicate potential problems have been detected
+  struct YellowFlags {
+    FLAGS16 data;
+
+    bool long_test_report_overwritten() {return data.f0();}
+    bool short_test_report_overwritten() {return data.f1();}
+    bool bad_time_sync() {return data.f2();}
   };
 
+  // indicate faults that have been detected
+  struct RedFlags {
+    FLAGS16 data;
+
+    bool rtc_not_running() {return data.f0();}
+    bool long_test_failed() {return data.f1();}
+    bool short_test_failed() {return data.f2();}
+    bool led_over_voltage_trip() {return data.f3();}
+    bool led_Low_load() {return data.f4();}
+    bool led_over_current_trip() {return data.f5();}
+    bool cells_enable_failed() {return data.f6();}
+  };
+
+  // flags indicating system state
+  struct SystemFlags {
+    FLAGS8 data;
+
+    bool analogue_up() {return data.f0();}
+    bool psu_up() {return data.f1();}
+    bool mains_on() {return data.f2();}
+    bool switched_mains_on() {return data.f3();}
+    bool cells_enabled() {return data.f4();}   
+    bool low_led_current() {return data.f5();}
+    bool long_test_running() {return data.f6();}
+    bool short_test_running() {return data.f7();}       
+  };
+
+  // More flags indicating system state
+  struct SystemFlags2 {
+    FLAGS8 data;
+
+    bool short_test_today() {return data.f0();}
+    bool long_test_today() {return data.f1();}
+    bool setting_reset_pending() {return data.f2();}
+  };
+
+  // Part of the settings structure
+  struct SystemSettingsFlags {
+    FLAGS14 data;
+
+    bool low_led_current_enabled() {return data.f0();}
+    bool has_external_driver() {return data.f1();}
+    bool use_switched_mains_state() {return data.f2();}    
+    bool reley_init_state() {return data.f3();}
+    bool has_rf() {return data.f4();}    
+    bool activate_on_failure() {return data.f5();}
+  };
+
+  // UINT16 formatted as follows:
+  // B4-B0: 5 bit unsigned integer representing day of month. 0 = 1st of month, 30 = 31st of month.
+  // B5-B8: 4 bit unsigned integer representing month. 0 = January, 11 = December
+  // B9-B15: 7 bit unsigned integer representing year in 2 digit format (0-99)
   struct System_Compressed_Date {
     UINT16 data;
     
     void set_day_of_month(uint32_t day) {
       data |= (day & 0x1F);
-
     }
+
     uint32_t day_of_month() {
       return uint(data &0x1F);
     }
@@ -174,8 +267,121 @@ namespace lgmc {
     }
   };
 
+  // UINT16 formatted as follows:
+  // B4-B0: 5-bit unsigned integer representing seconds in units of 2 seconds (0-29)
+  // B5-B10: 6-bit unsigned integer representing minute (0-59)
+  // B11-B15: 5-bit unsigned integer representing hour (0-23)
+  struct System_Compressed_Time {
+    UINT16 data;
+    
+    void set_seconds(uint32_t secs) {
+      data |= (secs & 0x1F);
+
+    }
+    uint32_t seconds() {
+      return uint(data &0x1F);
+    }
+
+    void set_minute(uint32_t minute) {
+      data |= (minute & 0x3F) << 5;
+    }
+
+    uint32_t minute() {
+      return uint((data >> 5) & 0x3F);
+    }
+
+    void set_hours(uint32_t hour) {
+      data |= (hour & 0x1F) << 11;
+    }
+
+    uint32_t hour() {
+      return uint((data >> 11) & 0x1F);
+    }
+
+    bool operator==(System_Compressed_Time other) const {
+      return data == other.data;
+    }
+  };
+
+  // A representation of time of day, with 1 second resolution.
+  // Second: UINT8 - unsigned integer representing minute (0-59)
+  // Minute: UINT8 - unsigned integer representing minute (0-59)
+  // Hour: UINT8 - unsigned integer representing hour (0-23)
+  struct SystemTime {
+    UINT8 sec;
+    UINT8 min;
+    UINT8 hr;
+
+    UINT8 seconds() {return sec;}
+    void set_seconds(UINT8 seconds) {sec = seconds;}
+
+    UINT8 minute() {return min;}
+    void set_minute(UINT8 minute) {min = minute;}
+
+    UINT8 hour() {return hr;}
+    void set_hour(UINT8 hour) {hr = hour;}
+  };
+
+  // FLAGS14 – set of flags specifying boolean settings
+  // LED Target Current Maintained Mode:  UINT14 – LED Current in 62.5uA units
+  // LED Target Voltage Maintained Mode: UINT14 – LED Voltage in 5mV units
+  // LED Target Power Maintained Mode:  UINT14 – LED Power in 1mW units
+  // LED Target Current Emergency Mode:  UINT14 – LED Current in 62.5uA units
+  // LED Target Voltage Emergency Mode:  UINT14 – LED Voltage in 5mV units
+  // LED Target Power Emergency Mode:  UINT14 – LED Power in 1mW units
+  // LED Test Voltage Lower Limit:  UINT14 – LED Voltage in 5mV units
+  // LED Test Voltage Upper Limit:  UINT14 – LED Voltage in 5mV units
+  // reserved
+  struct System_Settings_page0 {
+    UINT14 current_maintained_mode;
+    UINT14 voltage_maintained_mode;
+    UINT14 power_maintained_mode;
+    UINT14 current_emergency_mode;
+    UINT14 voltage_emergency_mode;
+    UINT14 power_emergency_mode;
+    UINT14 test_voltage_lower_limit;
+    UINT14 test_voltage_upper_limit;
+    UINT14 reserved[7];
+  };
+
+  // Report generated following a duration test
+  struct Long_Test_Report {
+    System_Compressed_Date start_date;
+    System_Compressed_Time start_time;
+    COMPTIME8 test_duration;
+    BATTSTATUS8 start_cell_mode;
+    UINT16 start_bottom_cell_volts;
+    UINT8 start_load_volts;
+    UINT8 start_load_current;
+    UINT16 test_duration_achieved;
+    UINT8 test_duration_achieved_with_both_cells;
+    UINT16 end_bottom_cell_volts;
+    UINT16 end_top_cell_volts;
+    UINT8 end_load_volts;
+    UINT8 end_load_current;
+    UINT16 bot_cell_amp_hours;
+    UINT16 top_cell_amp_hours;
+    UINT16 bot_cell_watt_hours;
+    UINT16 top_cell_watt_hours;
+    UINT8 exponents;
+    FLAGS8 test_flags;
+  };
+
+  // Report generated following a basic function test
+  struct Short_Test_Report {
+     System_Compressed_Date start_date;
+    System_Compressed_Time start_time;
+    BATTSTATUS8 start_cell_mode;
+    UINT16 bottom_cell_volts;
+    UINT16 top_cell_volts;
+    UINT16 load_volts;
+    UINT16 load_current;
+    FLAGS8 test_flags;
+  };
+
+  // specifies when a test will begin
   struct Test_Schedule {
-    System_Time start_time;
+    SystemTime start_time;
     FLAGS8 days_of_week;
     FLAGS32 days_of_month;
     FLAGS16 months;
@@ -183,6 +389,7 @@ namespace lgmc {
     UINT8 year_mask;
   };
 
+  
   /* base data template class */
   template <typename T>
   class BaseData {
@@ -250,6 +457,7 @@ namespace lgmc {
         CMD_PRESET_DATE_AND_TIME = 18,
         CMD_SET_SCHEDULE = 19,
         CMD_CHANGE_RTC_TO_PRESET = 23,
+        CMD_GET_FLAGS = 26,
         CMD_TIME_SYNC = 27,
       };
 
@@ -529,8 +737,21 @@ namespace lgmc {
       TimeSync()
       : BaseCommand(COMMANDS_TYPE::CMD_PRESET_DATE_AND_TIME) {}
   };
+
+/************************************************
+************** Status and reports ***************
+*************************************************/
+class GetFlagsCmd : public BaseCommand {
+    public:
+      GetFlagsCmd()
+      : BaseCommand(COMMANDS_TYPE::CMD_GET_FLAGS) {}
+
+      struct data_t{
+        FLAGS16 info_flags;
+        FLAGS16 warning_flags;
+        FLAGS16 error_flags;
+        FLAGS8 system_status_info;
+        FLAGS8 additional_status_info;
+      };
+  };
 }
-
-
-
-

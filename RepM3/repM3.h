@@ -136,6 +136,21 @@ namespace lgmc {
       int base_value = data & 0x3F;
       int m = (data >> 6) & 0x3;
 
+      switch (m) {
+        case 0:
+          m = 1;
+          break;
+        case 1:
+          m = 5;
+          break;
+        case 2:
+          m = 15;
+          break;
+        case 3:
+          m = 30;
+          break;
+      }
+
       return (base_value + 1) * m;
     } 
   };

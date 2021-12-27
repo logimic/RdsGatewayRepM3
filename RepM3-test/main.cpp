@@ -52,9 +52,19 @@ TEST(uint14_struct, data_types) {
 
 TEST(comptime8, data_types) {
     COMPTIME8 t;
-    t.data = 0x40;
+    t.data = 0x00;
 
     EXPECT_EQ(t.value(), 1);
+
+    t.data = 0x40;
+
+    EXPECT_EQ(t.value(), 5);
+
+    t.data = 0x80;
+    EXPECT_EQ(t.value(), 15);
+
+    t.data = 0xc0;
+    EXPECT_EQ(t.value(), 30);
 }
 
 TEST(batt_status, data_types) {

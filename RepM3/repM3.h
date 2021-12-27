@@ -7,6 +7,9 @@
 #include <sstream>
 #include <algorithm>
 
+// json serialize deserialize
+#include "rapidjson/prettywriter.h" // for stringify JSON
+
 namespace lgmc {
 
 /* definitions for packed structures for GCC and MSC */
@@ -46,6 +49,17 @@ namespace lgmc {
 
     void operator=(uint32_t other) {
       data = uint8_t(other);
+    }
+
+    // json serialize
+    template <typename Writer>
+    void Serialize(Writer& writer) const {
+        writer.StartObject();
+        
+        writer.String("data");
+        writer.Int(data);
+       
+        writer.EndObject();
     }
   };
 

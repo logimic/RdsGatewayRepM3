@@ -463,6 +463,7 @@ namespace lgmc {
     public:
       // command ids
       enum COMMANDS_TYPE {
+        CMD_GET_SYSTEM_STATUS_1 = 6,
         CMD_GET_VERSION = 9,
         CMD_SET_DATE_AND_TIME = 12,
         CMD_GET_DATE_AND_TIME = 13,
@@ -472,8 +473,11 @@ namespace lgmc {
         CMD_PRESET_DATE_AND_TIME = 18,
         CMD_SET_SCHEDULE = 19,
         CMD_CHANGE_RTC_TO_PRESET = 23,
+        CMD_GET_REPORT = 24,
+        CMD_ACKNOWLEDGE_REPORT = 24,
         CMD_GET_FLAGS = 26,
         CMD_TIME_SYNC = 27,
+        CMD_RESET_FLAGS = 28,
       };
 
       BaseCommand(){}
@@ -769,4 +773,48 @@ class GetFlagsCmd : public BaseCommand {
         FLAGS8 additional_status_info;
       };
   };
+
+  class ResetFlagsCmd : public BaseCommand {
+    public:
+      ResetFlagsCmd()
+      : BaseCommand(COMMANDS_TYPE::CMD_RESET_FLAGS) {}
+  
+  };
+
+// TODO: response can have different sizes -> adjust code
+class GetReportCmd : public BaseCommand {
+    public:
+      GetReportCmd()
+      : BaseCommand(COMMANDS_TYPE::CMD_GET_REPORT) {}
+
+      struct data_send_t {
+        UINT8 report_index;
+      };
+
+      struct data_t{
+        UINT8 status;
+      };
+  };
+
+  class AcknowledgeReportCmd : public BaseCommand {
+    public:
+      AcknowledgeReportCmd()
+      : BaseCommand(COMMANDS_TYPE::CMD_ACKNOWLEDGE_REPORT) {}
+
+      struct data_send_t {
+        UINT8 report_index;
+      };
+
+      struct data_t{
+        GreenFlags green_flags;
+        RedFlags red_flags;
+      };
+  };
+
+  class GetSystemStatus1Cmd : public BaseCommand {
+    public:
+      GetSystemStatus1Cmd()
+      : BaseCommand(COMMANDS_TYPE::CMD_GET_SYSTEM_STATUS_1) {}
+  };
 }
+

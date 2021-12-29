@@ -18,7 +18,7 @@ include_directories(${CMAKE_SOURCE_DIR}/RepM3)
 if (test)
   
 # This adds another subdirectory, which has 'project(gtest)'.
-  add_subdirectory(external/googletest)
+  add_subdirectory(${CMAKE_SOURCE_DIR}/3rdparty/googletest .build)
 
   # Include the gtest library. gtest_SOURCE_DIR is available due to
   # 'project(gtest)' above.

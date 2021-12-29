@@ -1,0 +1,6 @@
+[submodule "3rdpaty/rapidjson"]
+	path = 3rdparty/rapidjson
+	url = https://github.com/Tencent/rapidjson.git
+[submodule "3rdpaty/googletest"]
+	path = 3rdparty/googletest
+	url = https://github.com/google/googletest.git

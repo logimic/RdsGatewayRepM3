@@ -23,11 +23,11 @@ endif()
 #add_definitions(-DRAPIDJSON_HAS_STDSTRING)
 
 include_directories(${CMAKE_SOURCE_DIR}/include)
+include_directories(${CMAKE_SOURCE_DIR}/3rdparty/rapidjson/include)
 
 if (test)
   include(CTest)
   enable_testing()
-
 endif()
 
 add_subdirectory(include)

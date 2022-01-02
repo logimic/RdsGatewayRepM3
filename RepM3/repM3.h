@@ -272,7 +272,7 @@ namespace lgmc {
     }
 
     uint32_t day_of_month() {
-      return uint(data &0x1F);
+      return uint32_t(data &0x1F);
     }
 
     void set_month(uint32_t month) {
@@ -280,7 +280,7 @@ namespace lgmc {
     }
 
     uint32_t month() {
-      return uint((data >> 5) & 0xF);
+      return uint32_t((data >> 5) & 0xF);
     }
 
     void set_year(uint32_t year) {
@@ -288,7 +288,7 @@ namespace lgmc {
     }
 
     uint32_t year() {
-      return uint((data >> 9) & 0x7F);
+      return uint32_t((data >> 9) & 0x7F);
     }
 
     bool operator==(System_Compressed_Date other) const {
@@ -308,7 +308,7 @@ namespace lgmc {
 
     }
     uint32_t seconds() {
-      return uint(data &0x1F);
+      return uint32_t(data &0x1F);
     }
 
     void set_minute(uint32_t minute) {
@@ -316,7 +316,7 @@ namespace lgmc {
     }
 
     uint32_t minute() {
-      return uint((data >> 5) & 0x3F);
+      return uint32_t((data >> 5) & 0x3F);
     }
 
     void set_hours(uint32_t hour) {
@@ -324,7 +324,7 @@ namespace lgmc {
     }
 
     uint32_t hour() {
-      return uint((data >> 11) & 0x1F);
+      return uint32_t((data >> 11) & 0x1F);
     }
 
     bool operator==(System_Compressed_Time other) const {

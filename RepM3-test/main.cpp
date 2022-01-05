@@ -171,12 +171,12 @@ TEST(data_system_compressed_time, data_handler) {
 }
 
 TEST(command_serialize_base_no_data, command_handler) {
-    BaseCommand cmd;
-    
     struct test {
         UINT8 a;
         UINT8 b;
     };
+
+    BaseCommand<BaseData<test>, none> cmd;
 
     test t = {5,7};
     BaseData<test> td{t};
@@ -191,7 +191,7 @@ TEST(command_serialize_base_no_data, command_handler) {
 }
 
 TEST(command_serialize_base_with_data, command_handler) {
-    BaseCommand cmd;
+    BaseCommand<none, none> cmd;
     cmd.setCommandId(0x9);
     std::vector<uint8_t> buffer = cmd.serialize();
 
@@ -205,21 +205,22 @@ TEST(get_version_cmd, command_handler) {
     GetVersionCmd cmd;
     std::vector<uint8_t> exp{0xB1, 0x1, 0x9, 0xA, 0xB2};
     // verify serialization
-    std::vector<uint8_t> sd = cmd.serialize();
+    std::vector<uint8_t> sd;
+    cmd.serialize(sd);
 
     EXPECT_EQ(sd, exp);
 
     // verify deserialization
     GetVersionCmd::data_t d;
-    bool ok = cmd.deserialize(std::vector<uint8_t>{0xB1,0x3,0x9,0x5,0x1,0x2,0x0,0x14,0xB2}, &d);
-    
-    EXPECT_EQ(ok, true);
+    cmd.deserialize(std::vector<uint8_t>{0xB1,0x3,0x9,0x5,0x1,0x2,0x0,0x14,0xB2});
+    d = cmd.get_version();    
+    //EXPECT_EQ(ok, true);
     EXPECT_EQ(d.fw_version_minor, 0x5);
     EXPECT_EQ(d.fw_version_major, 0x1);
     EXPECT_EQ(d.fw_pre_release_nr, 0x2);
     EXPECT_EQ(d.hw_variant, 0x0);
 }
-
+#if 0
 TEST(set_settings_cmd, command_handler) {
     SetSettingsCmd cmd;
     
@@ -236,4 +237,24 @@ TEST(set_settings_cmd, command_handler) {
     bool ok = cmd.deserialize(std::vector<uint8_t>{0xB1, 0x0, 0x10, 0xAA, 0xBA, 0xB2}, &r);
     EXPECT_EQ(ok, true);
     EXPECT_EQ(r.status, 170);
+}
+#endif
+TEST(get_version, cmd_test) {
+    GetVersion ver;
+    std::vector<uint8_t> exp{0xB1, 0x1, 0x9, 0xA, 0xB2};
+    std::vector<uint8_t> d;
+    ver.serialize(d);
+
+    EXPECT_EQ(d, exp);
+
+    // receive response
+    ver.deserialize(std::vector<uint8_t>{0xB1,0x3,0x9,0x5,0x1,0x2,0x0,0x14,0xB2});
+        
+    // read data
+    GetVersion::Version v = ver.getVersion();
+  
+    EXPECT_EQ(v.minor, 0x5);
+    EXPECT_EQ(v.major, 0x1);
+    EXPECT_EQ(v.release, 0x2);
+    EXPECT_EQ(v.variant, 0x0);
 }

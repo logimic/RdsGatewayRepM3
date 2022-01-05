@@ -459,7 +459,7 @@ namespace lgmc {
         return m_data != other;
       }
 
-      T& data() { return m_data; }
+      T data() { return m_data; }
 
     private:
       T m_data;
@@ -476,6 +476,7 @@ namespace lgmc {
     printf("]\n");
   }
 
+template <typename S, typename R>
   class BaseCommand {
     public:
       // command ids
@@ -519,11 +520,11 @@ namespace lgmc {
       }
       
       /* serialize data with parameters */
-      template <typename T>
-      std::vector<uint8_t> serialize(T d) {
+      //template <typename T>
+      std::vector<uint8_t> serialize(S d) {
 
         m_data.push_back(start_byte);
-        m_data.push_back(sizeof(d)/sizeof(T) + 1);
+        m_data.push_back(sizeof(d)/sizeof(S) + 1);
         m_data.push_back(m_id);
         
         std::vector<uint8_t> ser = d.serialize();
@@ -537,9 +538,9 @@ namespace lgmc {
         return m_data;
       }
       
-      template <typename T>
-      bool deserialize(std::vector<uint8_t> d, T *t) {
-        BaseData<T> s;
+      //template <typename T>
+      bool deserialize(std::vector<uint8_t> d) {
+        BaseData<R> s;
         // make copy of data to member variable
         m_recv_data.insert(m_recv_data.end(), d.begin(), d.end());
 
@@ -583,7 +584,7 @@ namespace lgmc {
         // get data only
         c.erase (c.begin(),c.begin()+2);
 
-        *t = s.deserialize(c);
+        m_recv_type = s.deserialize(c);
         return true;
       }
 
@@ -597,6 +598,10 @@ namespace lgmc {
 
       std::vector<uint8_t> get_raw_deserializied_data() const {
         return m_recv_data;
+      }
+
+      R getType() {
+        return m_recv_type;
       }
     private:
       /* simple crc helper */
@@ -612,6 +617,8 @@ namespace lgmc {
       std::vector<uint8_t> m_data;
       std::vector<uint8_t> m_recv_data;
       uint8_t m_id;
+      // deserialized type
+      R m_recv_type;
       
       // constants
       const uint8_t start_byte = 0xB1;
@@ -622,22 +629,50 @@ namespace lgmc {
   /************** General Commands **************/
   /**********************************************/
 
-  class GetVersionCmd : public BaseCommand {
-    public:
-      GetVersionCmd() 
-      : BaseCommand(COMMANDS_TYPE::CMD_GET_VERSION) {}
-      
-      typedef struct data_t {
+  struct none { struct value_type {}; };
+
+     struct data_t {
         UINT8 fw_version_minor;
         UINT8 fw_version_major;
         UINT8 fw_pre_release_nr;
         UINT8 hw_variant;
-      } data;
+      };
 
-  protected:
-      data version;
+  //class GetVersionCmd;
+  //typedef GetVersionCmd::data_t GetVersionData;
+
+  class GetVersionCmd {
+    public:
+      GetVersionCmd() {}
+      struct data_t {
+        UINT8 fw_version_minor;
+        UINT8 fw_version_major;
+        UINT8 fw_pre_release_nr;
+        UINT8 hw_variant;
+      };
+
+      class Impl : public BaseCommand<none, GetVersionCmd::data_t> {
+        public:
+        Impl () 
+        : BaseCommand(COMMANDS_TYPE::CMD_GET_VERSION) {}
+      };
+      
+      void serialize(std::vector<uint8_t> &d) {
+        d = version.serialize(); 
+      }
+
+      void deserialize(const std::vector<uint8_t> &d) {
+        version.deserialize(d);
+      }
+
+      data_t get_version() {
+        return version.getType();
+      }
+
+  private:
+      Impl version;
   };
-
+# if 0
   /**********************************************/
   /************** Settings and schedules **************/
   /**********************************************/
@@ -862,7 +897,7 @@ class GetReportCmd : public BaseCommand {
   /**********************************************/
   /************** General Commands **************/
   /**********************************************/
-
+#endif 
   class GetVersion : public GetVersionCmd {
   public:
     class Version {
@@ -876,20 +911,27 @@ class GetReportCmd : public BaseCommand {
         using namespace rapidjson;
         Value val(Type::kObjectType);
         Pointer("/minor").Set(val, minor, a);
-        //...
+        Pointer("/major").Set(val, major, a);
+        Pointer("/release").Set(val, release, a);
+        Pointer("/variant").Set(val, variant, a);
+        
         return val;
       }
     };
 
     Version getVersion() {
+      GetVersionCmd::data_t version = get_version();
       Version retval;
+      
       retval.minor = version.fw_version_minor.data;
       retval.major = version.fw_version_major.data;
       retval.release = version.fw_pre_release_nr.data;
       retval.variant = version.hw_variant.data;
+
+      return retval;
     };
   };
-
+# if 0
   /**********************************************/
   /************** Settings and schedules **************/
   /**********************************************/
@@ -1021,6 +1063,8 @@ class GetReportCmd : public BaseCommand {
   //  //just debug, we don't care content
   //  std::vector<uint8_t> getStatus2() { return std::vector<uint8_t>(); }
   //};
+
+#endif
 
 }
 

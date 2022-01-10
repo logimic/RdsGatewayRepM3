@@ -661,6 +661,10 @@ template <typename S, typename R>
         d = version.serialize(); 
       }
 
+      std::vector<uint8_t> serialize() {
+        return version.serialize();
+      }
+
       void deserialize(const std::vector<uint8_t> &d) {
         version.deserialize(d);
       }

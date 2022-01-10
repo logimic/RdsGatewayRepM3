@@ -30,7 +30,6 @@ if (test)
   enable_testing()
 endif()
 
-add_subdirectory(include)
-add_subdirectory(RepM3)
 add_subdirectory(RepM3-test)
+add_subdirectory(RepM3-example)
 

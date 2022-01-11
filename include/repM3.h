@@ -505,12 +505,12 @@ template <typename S, typename R>
       /* serialize data with parameters */
       //template <typename T>
       std::vector<uint8_t> serialize(S d) {
-
+        BaseData<S> s(d);
         m_data.push_back(start_byte);
         m_data.push_back(sizeof(d)/sizeof(S) + 1);
         m_data.push_back(m_id);
         
-        std::vector<uint8_t> ser = d.serialize();
+        std::vector<uint8_t> ser = s.serialize();
         m_data.insert(m_data.end(), ser.begin(), ser.end());
         
         std::vector<uint8_t> c{m_data.begin() + 1, m_data.end()};

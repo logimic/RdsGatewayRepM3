@@ -40,4 +40,141 @@ class GetVersion : public GetVersionCmd {
       return retval;
     };
   };
+
+
+  /**********************************************/
+  /************** Settings and schedules **************/
+  /**********************************************/
+
+  //TODO not prio now
+  //GetSettings
+  //SetSettings
+
+  //TODO
+  class SetSchedule : public SetScheduleCmd {
+  public:
+    SetSchedule() = default;
+  };
+
+  /****************************************************
+  ************** Time and date commands ***************
+  ****************************************************/
+  class SetTimeAndDate : public SetTimeAndDateCmd {
+  public:
+    void setTime(const std::chrono::system_clock::time_point & tim) {
+      
+      time_t rawtime;
+      tm * tm1;
+      time(&rawtime);
+      tm1 = localtime(&rawtime);
+
+      m_time.time_second = tm1->tm_sec;
+      m_time.time_hour = tm1->tm_hour;
+      m_time.time_minute = tm1->tm_min;
+      m_time.date_day = tm1->tm_mday;
+      m_time.date_month = tm1->tm_mon;
+      m_time.date_year = tm1->tm_year;
+    }
+  };
+
+  class GetTimeAndDate : public GetTimeAndDateCmd {
+  public:
+    std::chrono::system_clock::time_point getTime() const {
+      //...
+    }
+  };
+
+  class PresetTimeAndDate : public PresetTimeAndDateCmd {
+  public:
+    void setTime(const std::chrono::system_clock::time_point & tim) {
+      //...
+    }
+  };
+
+  //will be sent via FRC ack broadcast
+  //class StartRtc : public BaseCommand {
+  //class ChangeRtcToPresetCmd : public BaseCommand {
+  //class TimeSync : public BaseCommand {
+
+  /************************************************
+  ************** Status and reports ***************
+  *************************************************/
+  class GetFlags : public GetFlagsCmd {
+  public:
+    //support these directly
+    bool isLongTestPass() const { return false; }
+    bool isShortTestPass() const { return false; }
+    bool isLongTestFail() const { return false; }
+    bool isShortTestFail() const { return false; }
+
+    //rest of flags just as numbers
+
+  };
+
+  
+  //will be sent via FRC ack broadcast
+  //class ResetFlagsCmd : public BaseCommand {
+
+  // TODO: response can have different sizes -> adjust code
+  class GetReport : public GetReportCmd {
+  public:
+    class LongReport {
+      std::chrono::system_clock::time_point startTime; //maybe we can keep in ss:mm:hh, .... to 
+      //charge_status
+      //cell_type
+      float bottomVoltage;
+      //...
+
+      rapidjson::Value encode(rapidjson::Document::AllocatorType & a) {
+        using namespace rapidjson;
+        Value val(Type::kObjectType);
+        //startTime directly as ss:mm:hh, .... or "ISO YYY-MM-DDThh:mm:ss" => will be stored to SQL DB?
+        Pointer("/bottomVoltage").Set(val, 3.0 , a); //TODO decode voltage
+        //...
+        return val;
+      }
+    };
+
+    class ShortReport {
+      //....
+    };
+
+    //to  prepare for request
+    void requestLongReport() {
+      //...
+    }
+    void requestShortReport() {
+      //...
+    }
+
+    //getting result
+    LongReport getLongReport() {
+      //...
+    }
+    ShortReport getShortReport() {
+      //...
+    }
+  };
+
+  class AcknowledgeReport : public AcknowledgeReportCmd {
+  public:
+    void ackLongTest() { //... 
+    }
+    void ackShortTest() { //...
+    }
+    bool getAckResult() {} //decode success/failure
+  };
+
+  //not prio now
+  //class GetSystemStatus1 : public GetSystemStatus1Cmd {
+  //public:
+  //  //just debug, we don't care content
+  //  std::vector<uint8_t> getStatus1() { return std::vector<uint8_t>(); }
+  //};
+
+  //class GetSystemStatus2 : public GetSystemStatus2Cmd {
+  //public:
+  //  //just debug, we don't care content
+  //  std::vector<uint8_t> getStatus2() { return std::vector<uint8_t>(); }
+  //};
 };

@@ -5,7 +5,7 @@ project (repM3-test)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 #include_directories(${CMAKE_BINARY_DIR})
-include_directories(${CMAKE_SOURCE_DIR}/RepM3)
+include_directories(${CMAKE_SOURCE_DIR}/include())
 
 #set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 #set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})

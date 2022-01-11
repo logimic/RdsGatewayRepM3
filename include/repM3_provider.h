@@ -4,6 +4,9 @@
 
 namespace lgmc {
 
+/**********************************************/
+/************** General Commands **************/
+/**********************************************/
 class GetVersion : public GetVersionCmd {
   public:
     class Version {
@@ -26,7 +29,7 @@ class GetVersion : public GetVersionCmd {
     };
 
     Version getVersion() {
-      GetVersionCmd::data_t version = get_version();
+      GetVersionCmd::data_t version = getData();
       Version retval;
       
       retval.minor = version.fw_version_minor.data;

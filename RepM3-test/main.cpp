@@ -1,4 +1,5 @@
 #include "repM3.h"
+#include "repM3_provider.h"
 #include <iostream>
 #include <string>
 
@@ -212,7 +213,7 @@ TEST(get_version_cmd, command_handler) {
     // verify deserialization
     GetVersionCmd::data_t d;
     cmd.deserialize(std::vector<uint8_t>{0xB1,0x3,0x9,0x5,0x1,0x2,0x0,0x14,0xB2});
-    d = cmd.get_version();    
+    d = cmd.getData();
     //EXPECT_EQ(ok, true);
     EXPECT_EQ(d.fw_version_minor, 0x5);
     EXPECT_EQ(d.fw_version_major, 0x1);

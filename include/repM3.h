@@ -68,7 +68,7 @@ namespace lgmc {
 
   // 14-bit unsigned integer
   // most significant 2 bits of the second byte are unused
-  struct UINT14 {
+  PACK(struct UINT14 {
     uint16_t data = 0;
 
     UINT14 & operator=(UINT14 & other) {
@@ -78,7 +78,7 @@ namespace lgmc {
       data = other.data & 0x3FFF; // only 14 byte
       return *this;
     }
-  };
+  });
 
   // 16-bit unsigned integer
   struct UINT16 {
@@ -364,7 +364,7 @@ namespace lgmc {
   // LED Test Voltage Lower Limit:  UINT14 – LED Voltage in 5mV units
   // LED Test Voltage Upper Limit:  UINT14 – LED Voltage in 5mV units
   // reserved
-  struct System_Settings_page0 {
+  PACK(struct System_Settings_page0 {
     UINT14 current_maintained_mode;
     UINT14 voltage_maintained_mode;
     UINT14 power_maintained_mode;
@@ -374,10 +374,10 @@ namespace lgmc {
     UINT14 test_voltage_lower_limit;
     UINT14 test_voltage_upper_limit;
     UINT14 reserved[7];
-  };
+  });
 
   // Report generated following a duration test
-  struct Long_Test_Report {
+  PACK(struct Long_Test_Report {
     System_Compressed_Date start_date;
     System_Compressed_Time start_time;
     COMPTIME8 test_duration;
@@ -397,7 +397,7 @@ namespace lgmc {
     UINT16 top_cell_watt_hours;
     UINT8 exponents;
     FLAGS8 test_flags;
-  };
+  });
 
   // Report generated following a basic function test
   struct Short_Test_Report {
@@ -480,27 +480,10 @@ template <typename S, typename R>
   class BaseCommand {
     public:
       // command ids
-      enum COMMANDS_TYPE {
-        CMD_GET_SYSTEM_STATUS_1 = 6,
-        CMD_GET_VERSION = 9,
-        CMD_SET_DATE_AND_TIME = 12,
-        CMD_GET_DATE_AND_TIME = 13,
-        CMD_START_RTC = 14,
-        CMD_GET_SETTINGS = 15,
-        CMD_SET_SETTINGS = 16,
-        CMD_PRESET_DATE_AND_TIME = 18,
-        CMD_SET_SCHEDULE = 19,
-        CMD_CHANGE_RTC_TO_PRESET = 23,
-        CMD_GET_REPORT = 24,
-        CMD_ACKNOWLEDGE_REPORT = 24,
-        CMD_GET_FLAGS = 26,
-        CMD_TIME_SYNC = 27,
-        CMD_RESET_FLAGS = 28,
-      };
-
+ 
       BaseCommand(){}
       
-      BaseCommand(COMMANDS_TYPE cmd_id)
+      BaseCommand(uint8_t cmd_id)
       : m_id(cmd_id){}
       
       virtual ~BaseCommand() {
@@ -629,18 +612,34 @@ template <typename S, typename R>
   /************** General Commands **************/
   /**********************************************/
 
+  // none struct used in argument when there is no send/receive payload
   struct none { struct value_type {}; };
 
-     struct data_t {
-        UINT8 fw_version_minor;
-        UINT8 fw_version_major;
-        UINT8 fw_pre_release_nr;
-        UINT8 hw_variant;
-      };
+  enum CommandNumber {
+    CMD_GET_SYSTEM_STATUS_1 = 6,
+    CMD_GET_VERSION = 9,
+    CMD_SET_DATE_AND_TIME = 12,
+    CMD_GET_DATE_AND_TIME = 13,
+    CMD_START_RTC = 14,
+    CMD_GET_SETTINGS = 15,
+    CMD_SET_SETTINGS = 16,
+    CMD_PRESET_DATE_AND_TIME = 18,
+    CMD_SET_SCHEDULE = 19,
+    CMD_CHANGE_RTC_TO_PRESET = 23,
+    CMD_GET_REPORT = 24,
+    CMD_ACKNOWLEDGE_REPORT = 24,
+    CMD_GET_FLAGS = 26,
+    CMD_TIME_SYNC = 27,
+    CMD_RESET_FLAGS = 28,
+  };
 
-  //class GetVersionCmd;
-  //typedef GetVersionCmd::data_t GetVersionData;
-
+  template <typename T, typename S, uint8_t id>
+  class Impl : public BaseCommand<T, S> {
+    public:
+      Impl()
+      : BaseCommand<T,S>(id) {}
+  };
+  
   class GetVersionCmd {
     public:
       GetVersionCmd() {}
@@ -651,41 +650,33 @@ template <typename S, typename R>
         UINT8 hw_variant;
       };
 
-      class Impl : public BaseCommand<none, GetVersionCmd::data_t> {
-        public:
-        Impl () 
-        : BaseCommand(COMMANDS_TYPE::CMD_GET_VERSION) {}
-      };
-      
       void serialize(std::vector<uint8_t> &d) {
-        d = version.serialize(); 
+        d = impl.serialize(); 
       }
 
       std::vector<uint8_t> serialize() {
-        return version.serialize();
+        return impl.serialize();
       }
 
       void deserialize(const std::vector<uint8_t> &d) {
-        version.deserialize(d);
+        impl.deserialize(d);
       }
 
-      data_t get_version() {
-        return version.getType();
+      data_t getData() {
+        return impl.getType();
       }
 
   private:
-      Impl version;
+      Impl<none, GetVersionCmd::data_t, CMD_GET_VERSION> impl;
   };
-# if 0
+
   /**********************************************/
   /************** Settings and schedules **************/
   /**********************************************/
 
-  class SetSettingsCmd : public BaseCommand {
+  class SetSettingsCmd {
     public:
-      SetSettingsCmd() 
-      : BaseCommand(COMMANDS_TYPE::CMD_SET_SETTINGS) {}
-
+     
       PACK(struct data_send_t {
         UINT8 system_settings_page;
         System_Compressed_Date date;
@@ -695,20 +686,35 @@ template <typename S, typename R>
         UINT8 status;
       } data;
 
-    void set_system_settings_page(uint32_t page = 0) { data_sent.data().system_settings_page = page;} 
+      void serialize(std::vector<uint8_t> &d) {
+        d = impl.serialize(); 
+      }
+
+      std::vector<uint8_t> serialize() {
+        return impl.serialize();
+      }
+
+      void deserialize(const std::vector<uint8_t> &d) {
+        impl.deserialize(d);
+      }
+
+      data_t getData() {
+        return impl.getType();
+      }
+
+  private:
+      Impl<SetSettingsCmd::data_send_t, SetSettingsCmd::data_t, CMD_SET_SETTINGS> impl;
+
+    /*void set_system_settings_page(uint32_t page = 0) { data_sent.data().system_settings_page = page;} 
     void set_date(uint32_t day_of_month = 0, uint32_t month = 0, uint32_t year = 0) { 
       data_sent.data().date.set_day_of_month(day_of_month);
       data_sent.data().date.set_month(month);
       data_sent.data().date.set_year(year);
-    } 
-      BaseData<data_send_t> data_sent;
+    }*/ 
   };
 
-  class GetSettingsCmd : public BaseCommand {
+  class GetSettingsCmd {
     public:
-      GetSettingsCmd()
-      : BaseCommand(COMMANDS_TYPE::CMD_GET_SETTINGS) {}
-
       struct data_send_t {
         UINT8 system_settings_page;
       };
@@ -716,14 +722,35 @@ template <typename S, typename R>
       PACK(struct data_t {
         UINT8 system_settings_page;
         System_Settings_page0 page;
+
+        void operator=(struct data_t other) {
+          system_settings_page = other.system_settings_page;
+          page = other.page;
+        };
+        
       });
+
+      void serialize(std::vector<uint8_t> &d) {
+        d = impl.serialize(); 
+      }
+
+      std::vector<uint8_t> serialize() {
+        return impl.serialize();
+      }
+
+      void deserialize(const std::vector<uint8_t> &d) {
+        impl.deserialize(d);
+      }
+
+      data_t getData() {
+        return impl.getType();
+      }
+
+  private:
+    Impl<GetSettingsCmd::data_send_t, GetSettingsCmd::data_t, CMD_GET_SETTINGS> impl;
   };
 
-  class SetScheduleCmd : public BaseCommand {
-    public:
-      SetScheduleCmd()
-      : BaseCommand(COMMANDS_TYPE::CMD_SET_SCHEDULE) {}
-
+  class SetScheduleCmd {
       PACK(struct data_send_t {
         UINT8 schedule_selection;
         Test_Schedule schedule_data;
@@ -732,16 +759,33 @@ template <typename S, typename R>
       struct data_t{
         UINT8 status;
       };
+
+      void serialize(std::vector<uint8_t> &d) {
+        d = impl.serialize(); 
+      }
+
+      std::vector<uint8_t> serialize() {
+        return impl.serialize();
+      }
+
+      void deserialize(const std::vector<uint8_t> &d) {
+        impl.deserialize(d);
+      }
+
+      data_t getData() {
+        return impl.getType();
+      }
+
+  private:
+    Impl<SetScheduleCmd::data_send_t, SetScheduleCmd::data_t, CMD_SET_SCHEDULE> impl;
   };
 
 /****************************************************
 ************** Time and date commands ***************
 ****************************************************/
-  class SetTimeAndDateCmd : public BaseCommand {
+  class SetTimeAndDateCmd {
     public:
-      SetTimeAndDateCmd()
-      : BaseCommand(COMMANDS_TYPE::CMD_SET_DATE_AND_TIME) {}
-
+      
       PACK(struct data_send_t {
         UINT8 time_second;
         UINT8 time_minute;
@@ -756,15 +800,29 @@ template <typename S, typename R>
         UINT8 status;
       };
 
-  protected:
-    data_send_t m_time;
+      void serialize(std::vector<uint8_t> &d) {
+        d = impl.serialize(); 
+      }
+
+      std::vector<uint8_t> serialize() {
+        return impl.serialize();
+      }
+
+      void deserialize(const std::vector<uint8_t> &d) {
+        impl.deserialize(d);
+      }
+
+      data_t getData() {
+        return impl.getType();
+      }
+
+  private:
+    Impl<SetTimeAndDateCmd::data_send_t, SetTimeAndDateCmd::data_t, CMD_SET_DATE_AND_TIME> impl;
   };
 
-  class GetTimeAndDateCmd : public BaseCommand {
+  class GetTimeAndDateCmd  {
     public:
-      GetTimeAndDateCmd()
-      : BaseCommand(COMMANDS_TYPE::CMD_SET_DATE_AND_TIME) {}
-
+     
       PACK(struct data_t {
         UINT8 time_second;
         UINT8 time_minute;
@@ -774,13 +832,30 @@ template <typename S, typename R>
         UINT8 date_year;
         UINT8 date_century;
       });
+
+      void serialize(std::vector<uint8_t> &d) {
+        d = impl.serialize(); 
+      }
+
+      std::vector<uint8_t> serialize() {
+        return impl.serialize();
+      }
+
+      void deserialize(const std::vector<uint8_t> &d) {
+        impl.deserialize(d);
+      }
+
+      data_t getData() {
+        return impl.getType();
+      }
+
+  private:
+    Impl<none, GetTimeAndDateCmd::data_t, CMD_GET_DATE_AND_TIME> impl;
   };
 
-  class PresetTimeAndDateCmd : public BaseCommand {
+  class PresetTimeAndDateCmd {
     public:
-      PresetTimeAndDateCmd()
-      : BaseCommand(COMMANDS_TYPE::CMD_PRESET_DATE_AND_TIME) {}
-
+      
       PACK(struct data_send_t {
         UINT8 time_second;
         UINT8 time_minute;
@@ -794,61 +869,150 @@ template <typename S, typename R>
       struct data_t{
         UINT8 status;
       };
+
+      void serialize(std::vector<uint8_t> &d) {
+        d = impl.serialize(); 
+      }
+
+      std::vector<uint8_t> serialize() {
+        return impl.serialize();
+      }
+
+      void deserialize(const std::vector<uint8_t> &d) {
+        impl.deserialize(d);
+      }
+
+      data_t getData() {
+        return impl.getType();
+      }
+
+  private:
+    Impl<PresetTimeAndDateCmd::data_send_t, PresetTimeAndDateCmd::data_t, CMD_PRESET_DATE_AND_TIME> impl;
   };
 
-  class StartRtc : public BaseCommand {
+  class StartRtc {
     public:
-      StartRtc()
-      : BaseCommand(COMMANDS_TYPE::CMD_PRESET_DATE_AND_TIME) {}
+     
+      void serialize(std::vector<uint8_t> &d) {
+        d = impl.serialize(); 
+      }
+
+      std::vector<uint8_t> serialize() {
+        return impl.serialize();
+      }
+
+      void deserialize(const std::vector<uint8_t> &d) {
+        impl.deserialize(d);
+      }
+
+  private:
+    Impl<none, none, CMD_START_RTC> impl;
   };
 
-  class ChangeRtcToPresetCmd : public BaseCommand {
+  class ChangeRtcToPresetCmd {
     public:
-      ChangeRtcToPresetCmd()
-      : BaseCommand(COMMANDS_TYPE::CMD_CHANGE_RTC_TO_PRESET) {}
-
+     
       struct data_t {
         UINT8 status;
         FLAGS8 result;
       };
+
+      void serialize(std::vector<uint8_t> &d) {
+        d = impl.serialize(); 
+      }
+
+      std::vector<uint8_t> serialize() {
+        return impl.serialize();
+      }
+
+      void deserialize(const std::vector<uint8_t> &d) {
+        impl.deserialize(d);
+      }
+
+      data_t getData() {
+        return impl.getType();
+      }
+
+  private:
+    Impl<none, ChangeRtcToPresetCmd::data_t, CMD_CHANGE_RTC_TO_PRESET> impl;
   };
 
-  class TimeSync : public BaseCommand {
+  class TimeSyncCmd {
     public:
-      TimeSync()
-      : BaseCommand(COMMANDS_TYPE::CMD_PRESET_DATE_AND_TIME) {}
+           
+      void serialize(std::vector<uint8_t> &d) {
+        d = impl.serialize(); 
+      }
+
+      std::vector<uint8_t> serialize() {
+        return impl.serialize();
+      }
+
+      void deserialize(const std::vector<uint8_t> &d) {
+        impl.deserialize(d);
+      }
+      
+  private:
+    Impl<none, none, CMD_TIME_SYNC> impl;
   };
 
 /************************************************
 ************** Status and reports ***************
 *************************************************/
-class GetFlagsCmd : public BaseCommand {
+class GetFlagsCmd {
     public:
-      GetFlagsCmd()
-      : BaseCommand(COMMANDS_TYPE::CMD_GET_FLAGS) {}
-
-      struct data_t{
+      
+      PACK(struct data_t {
         FLAGS16 info_flags;
         FLAGS16 warning_flags;
         FLAGS16 error_flags;
         FLAGS8 system_status_info;
         FLAGS8 additional_status_info;
-      };
+      });
+
+      void serialize(std::vector<uint8_t> &d) {
+        d = impl.serialize(); 
+      }
+
+      std::vector<uint8_t> serialize() {
+        return impl.serialize();
+      }
+
+      void deserialize(const std::vector<uint8_t> &d) {
+        impl.deserialize(d);
+      }
+
+      data_t getData() {
+        return impl.getType();
+      }
+
+  private:
+    Impl<none, GetFlagsCmd::data_t, CMD_GET_FLAGS> impl;
   };
 
-  class ResetFlagsCmd : public BaseCommand {
+  class ResetFlagsCmd {
     public:
-      ResetFlagsCmd()
-      : BaseCommand(COMMANDS_TYPE::CMD_RESET_FLAGS) {}
-  
+          
+      void serialize(std::vector<uint8_t> &d) {
+        d = impl.serialize(); 
+      }
+
+      std::vector<uint8_t> serialize() {
+        return impl.serialize();
+      }
+
+      void deserialize(const std::vector<uint8_t> &d) {
+        impl.deserialize(d);
+      }
+
+  private:
+    Impl<none, none, CMD_RESET_FLAGS> impl;
   };
 
 // TODO: response can have different sizes -> adjust code
-class GetReportCmd : public BaseCommand {
+class GetReportCmd {
     public:
-      GetReportCmd()
-      : BaseCommand(COMMANDS_TYPE::CMD_GET_REPORT) {}
-
+      
       struct data_send_t {
         UINT8 report_index;
       };
@@ -856,13 +1020,30 @@ class GetReportCmd : public BaseCommand {
       struct data_t{
         UINT8 status;
       };
+
+      void serialize(std::vector<uint8_t> &d) {
+        d = impl.serialize(); 
+      }
+
+      std::vector<uint8_t> serialize() {
+        return impl.serialize();
+      }
+
+      void deserialize(const std::vector<uint8_t> &d) {
+        impl.deserialize(d);
+      }
+
+      data_t getData() {
+        return impl.getType();
+      }
+
+  private:
+    Impl<GetReportCmd::data_send_t, GetReportCmd::data_t, CMD_GET_REPORT> impl;
   };
 
-  class AcknowledgeReportCmd : public BaseCommand {
+  class AcknowledgeReportCmd {
     public:
-      AcknowledgeReportCmd()
-      : BaseCommand(COMMANDS_TYPE::CMD_ACKNOWLEDGE_REPORT) {}
-
+      
       struct data_send_t {
         UINT8 report_index;
       };
@@ -871,172 +1052,43 @@ class GetReportCmd : public BaseCommand {
         GreenFlags green_flags;
         RedFlags red_flags;
       };
-  };
 
-  class GetSystemStatus1Cmd : public BaseCommand {
-    public:
-      GetSystemStatus1Cmd()
-      : BaseCommand(COMMANDS_TYPE::CMD_GET_SYSTEM_STATUS_1) {}
-  };
-
-/////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////
-
-  //typical usage:
-  /*
-  //request
-  GetReport rep;
-  rep.requestShortReport();
-  std::vector<uint8_t> request = rep.serialize();
-  
-  std::vector<uint8_t> response;
-  //send to IQRF
-  //wait on response
-  response = sendToIqrf(buf);
-  rep.deserialize(response);
-  GetReport::ShortTest shortTest= getShortTest()
-  //do whatever with shortTest
-  */
-
-  /**********************************************/
-  /************** General Commands **************/
-  /**********************************************/
-#endif 
-  
-# if 0
-  /**********************************************/
-  /************** Settings and schedules **************/
-  /**********************************************/
-
-  //TODO not prio now
-  //GetSettings
-  //SetSettings
-
-  //TODO
-  class SetSchedule : public SetScheduleCmd {
-  public:
-    SetSchedule() = default;
-  };
-
-  /****************************************************
-  ************** Time and date commands ***************
-  ****************************************************/
-  class SetTimeAndDate : public SetTimeAndDateCmd {
-  public:
-    void setTime(const std::chrono::system_clock::time_point & tim) {
-      
-      time_t rawtime;
-      tm * tm1;
-      time(&rawtime);
-      tm1 = localtime(&rawtime);
-
-      m_time.time_second = tm1->tm_sec;
-      //...
-    }
-  };
-
-  class GetTimeAndDate : public GetTimeAndDateCmd {
-  public:
-    std::chrono::system_clock::time_point getTime() const {
-      //...
-    }
-  };
-
-  class PresetTimeAndDate : public PresetTimeAndDateCmd {
-  public:
-    void setTime(const std::chrono::system_clock::time_point & tim) {
-      //...
-    }
-  };
-
-  //will be sent via FRC ack broadcast
-  //class StartRtc : public BaseCommand {
-  //class ChangeRtcToPresetCmd : public BaseCommand {
-  //class TimeSync : public BaseCommand {
-
-  /************************************************
-  ************** Status and reports ***************
-  *************************************************/
-  class GetFlags : public GetFlagsCmd {
-  public:
-    //support these directly
-    bool isLongTestPass() const { return false; }
-    bool isShortTestPass() const { return false; }
-    bool isLongTestFail() const { return false; }
-    bool isShortTestFail() const { return false; }
-
-    //rest of flags just as numbers
-
-  };
-
-  
-  //will be sent via FRC ack broadcast
-  //class ResetFlagsCmd : public BaseCommand {
-
-  // TODO: response can have different sizes -> adjust code
-  class GetReport : public GetReportCmd {
-  public:
-    class LongReport {
-      std::chrono::system_clock::time_point startTime; //maybe we can keep in ss:mm:hh, .... to 
-      //charge_status
-      //cell_type
-      float bottomVoltage;
-      //...
-
-      rapidjson::Value encode(rapidjson::Document::AllocatorType & a) {
-        using namespace rapidjson;
-        Value val(Type::kObjectType);
-        //startTime directly as ss:mm:hh, .... or "ISO YYY-MM-DDThh:mm:ss" => will be stored to SQL DB?
-        Pointer("/bottomVoltage").Set(val, 3.0 , a); //TODO decode voltage
-        //...
-        return val;
+      void serialize(std::vector<uint8_t> &d) {
+        d = impl.serialize(); 
       }
-    };
 
-    class ShortReport {
-      //....
-    };
+      std::vector<uint8_t> serialize() {
+        return impl.serialize();
+      }
 
-    //to  prepare for request
-    void requestLongReport() {
-      //...
-    }
-    void requestShortReport() {
-      //...
-    }
+      void deserialize(const std::vector<uint8_t> &d) {
+        impl.deserialize(d);
+      }
 
-    //getting result
-    LongReport getLongReport() {
-      //...
-    }
-    ShortReport getShortReport() {
-      //...
-    }
+      data_t getData() {
+        return impl.getType();
+      }
+
+  private:
+    Impl<AcknowledgeReportCmd::data_send_t, AcknowledgeReportCmd::data_t, CMD_ACKNOWLEDGE_REPORT> impl;
   };
 
-  class AcknowledgeReport : public AcknowledgeReportCmd {
-  public:
-    void ackLongTest() { //... 
-    }
-    void ackShortTest() { //...
-    }
-    bool getAckResult() {} //decode success/failure
+  class GetSystemStatus1Cmd {
+    public:
+      
+      void serialize(std::vector<uint8_t> &d) {
+        d = impl.serialize(); 
+      }
+
+      std::vector<uint8_t> serialize() {
+        return impl.serialize();
+      }
+
+      void deserialize(const std::vector<uint8_t> &d) {
+        impl.deserialize(d);
+      }
+
+  private:
+    Impl<none, none, CMD_GET_SYSTEM_STATUS_1> impl;
   };
-
-  //not prio now
-  //class GetSystemStatus1 : public GetSystemStatus1Cmd {
-  //public:
-  //  //just debug, we don't care content
-  //  std::vector<uint8_t> getStatus1() { return std::vector<uint8_t>(); }
-  //};
-
-  //class GetSystemStatus2 : public GetSystemStatus2Cmd {
-  //public:
-  //  //just debug, we don't care content
-  //  std::vector<uint8_t> getStatus2() { return std::vector<uint8_t>(); }
-  //};
-
-#endif
-
-}
-
+};

@@ -801,11 +801,11 @@ template <typename S, typename R>
       };
 
       void serialize(std::vector<uint8_t> &d) {
-        d = impl.serialize(); 
+        d = impl.serialize(m_time); 
       }
 
       std::vector<uint8_t> serialize() {
-        return impl.serialize();
+        return impl.serialize(m_time);
       }
 
       void deserialize(const std::vector<uint8_t> &d) {
@@ -818,6 +818,9 @@ template <typename S, typename R>
 
   private:
     Impl<SetTimeAndDateCmd::data_send_t, SetTimeAndDateCmd::data_t, CMD_SET_DATE_AND_TIME> impl;
+
+  protected:
+    data_send_t m_time;
   };
 
   class GetTimeAndDateCmd  {

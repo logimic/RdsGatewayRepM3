@@ -55,6 +55,7 @@ class GetVersion : public GetVersionCmd {
   public:
     SetSchedule() = default;
   };
+    
 
   /****************************************************
   ************** Time and date commands ***************
@@ -62,18 +63,7 @@ class GetVersion : public GetVersionCmd {
   class SetTimeAndDate : public SetTimeAndDateCmd {
   public:
     void setTime(const std::chrono::system_clock::time_point & tim) {
-      
-      time_t rawtime;
-      tm * tm1;
-      time(&rawtime);
-      tm1 = localtime(&rawtime);
-
-      m_time.time_second = tm1->tm_sec;
-      m_time.time_hour = tm1->tm_hour;
-      m_time.time_minute = tm1->tm_min;
-      m_time.date_day = tm1->tm_mday;
-      m_time.date_month = tm1->tm_mon;
-      m_time.date_year = tm1->tm_year;
+      m_time = convertFromTimePoint(tim);
     }
   };
 
@@ -87,7 +77,7 @@ class GetVersion : public GetVersionCmd {
   class PresetTimeAndDate : public PresetTimeAndDateCmd {
   public:
     void setTime(const std::chrono::system_clock::time_point & tim) {
-      //...
+     m_time = convertFromTimePoint(tim);
     }
   };
 

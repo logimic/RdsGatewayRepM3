@@ -644,12 +644,12 @@ template <typename S, typename R>
   class GetVersionCmd {
     public:
       GetVersionCmd() {}
-      struct data_t {
+      PACK(struct data_t {
         UINT8 fw_version_minor;
         UINT8 fw_version_major;
         UINT8 fw_pre_release_nr;
         UINT8 hw_variant;
-      };
+      });
 
       void serialize(std::vector<uint8_t> &d) {
         d = impl.serialize(); 
@@ -784,9 +784,9 @@ template <typename S, typename R>
 /****************************************************
 ************** Time and date commands ***************
 ****************************************************/
-  class SetTimeAndDateCmd {
+  // helper class for defining common struct for date/time and conversions
+  class DateTimeBase {
     public:
-      
       PACK(struct data_send_t {
         UINT8 time_second;
         UINT8 time_minute;
@@ -797,6 +797,70 @@ template <typename S, typename R>
         UINT8 date_century;
       });
 
+      PACK(struct data_recv_t {
+        UINT8 time_second;
+        UINT8 time_minute;
+        UINT8 time_hour;
+        UINT8 date_day;
+        UINT8 date_day_of_week;
+        UINT8 date_month;
+        UINT8 date_year;
+        UINT8 date_century;
+      });
+
+      // convert from timepoint to low level struct for sending data
+      data_send_t convertFromTimePoint(const std::chrono::system_clock::time_point & tim) {
+        data_send_t time;
+        time_t rawtime = std::chrono::system_clock::to_time_t(tim);
+        tm * tm = localtime(&rawtime);
+
+        time.time_second = tm->tm_sec;
+        time.time_hour = tm->tm_hour;
+        time.time_minute = tm->tm_min;
+        // day is from 1 - 31 (we expect 0 - 30)
+        time.date_day = tm->tm_mday - 1;
+        time.date_month = tm->tm_mon;
+        // tm_year is number of years from 1900
+        time.date_year = (tm->tm_year + 1900)% 100;
+        time.date_century = centuryFromYear(tm->tm_year + 1900); 
+        return time;
+      }
+
+      std::chrono::system_clock::time_point convertToTimePoint(data_recv_t data) {
+        tm time;
+        time.tm_sec = data.time_second.data;
+        time.tm_min = data.time_minute.data;
+        time.tm_hour = data.time_hour.data;
+        time.tm_mday = data.date_day.data + 1;
+        time.tm_wday = data.date_day_of_week.data;
+        time.tm_mon = data.date_month.data;
+        
+        time.tm_year = yearFromCentury(data.date_year.data, data.date_century.data) - 1900;
+
+        time_t t = mktime(&time);
+
+        return std::chrono::system_clock::from_time_t(t);
+      }
+
+      // helper for converting year to century
+      static int centuryFromYear(const uint32_t year) {
+        if (year <= 0) {
+            return -1;
+        } else if ((year % 100) == 0) {
+            return year / 100;
+        } else {
+            return (year / 100) + 1;
+        } 
+      }
+
+      static int yearFromCentury(const uint8_t year, const uint8_t century) {
+        return year != 0 ? ((century - 1) * 100) + year : (century * 100) + year;
+      }
+  };
+
+  class SetTimeAndDateCmd : public DateTimeBase {
+    public:
+      
       struct data_t{
         UINT8 status;
       };
@@ -824,19 +888,9 @@ template <typename S, typename R>
     data_send_t m_time;
   };
 
-  class GetTimeAndDateCmd  {
+  class GetTimeAndDateCmd : public DateTimeBase {
     public:
      
-      PACK(struct data_t {
-        UINT8 time_second;
-        UINT8 time_minute;
-        UINT8 time_hour;
-        UINT8 date_day;
-        UINT8 date_month;
-        UINT8 date_year;
-        UINT8 date_century;
-      });
-
       void serialize(std::vector<uint8_t> &d) {
         d = impl.serialize(); 
       }
@@ -849,37 +903,27 @@ template <typename S, typename R>
         impl.deserialize(d);
       }
 
-      data_t getData() {
+      data_recv_t getData() {
         return impl.getType();
       }
 
   private:
-    Impl<none, GetTimeAndDateCmd::data_t, CMD_GET_DATE_AND_TIME> impl;
+    Impl<none, GetTimeAndDateCmd::data_recv_t, CMD_GET_DATE_AND_TIME> impl;
   };
 
-  class PresetTimeAndDateCmd {
+  class PresetTimeAndDateCmd : public DateTimeBase {
     public:
-      
-      PACK(struct data_send_t {
-        UINT8 time_second;
-        UINT8 time_minute;
-        UINT8 time_hour;
-        UINT8 date_day;
-        UINT8 date_month;
-        UINT8 date_year;
-        UINT8 date_century;
-      });
-
+     
       struct data_t{
         UINT8 status;
       };
 
       void serialize(std::vector<uint8_t> &d) {
-        d = impl.serialize(); 
+        d = impl.serialize(m_time); 
       }
 
       std::vector<uint8_t> serialize() {
-        return impl.serialize();
+        return impl.serialize(m_time);
       }
 
       void deserialize(const std::vector<uint8_t> &d) {
@@ -892,6 +936,9 @@ template <typename S, typename R>
 
   private:
     Impl<PresetTimeAndDateCmd::data_send_t, PresetTimeAndDateCmd::data_t, CMD_PRESET_DATE_AND_TIME> impl;
+  
+  protected:
+    data_send_t m_time;
   };
 
   class StartRtc {

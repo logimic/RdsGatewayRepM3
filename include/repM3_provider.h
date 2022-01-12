@@ -92,13 +92,18 @@ class GetVersion : public GetVersionCmd {
   class GetFlags : public GetFlagsCmd {
   public:
     //support these directly
-    bool isLongTestPass() const { return false; }
-    bool isShortTestPass() const { return false; }
-    bool isLongTestFail() const { return false; }
-    bool isShortTestFail() const { return false; }
-
-    //rest of flags just as numbers
-
+    bool isLongTestPass() const {
+        return getData().info_flags.f0();
+    }
+    bool isShortTestPass() const {
+        return getData().info_flags.f1();
+    }
+    bool isLongTestFail() const {
+        return getData().info_flags.f2();
+    }
+    bool isShortTestFail() const {
+        return getData().info_flags.f3();
+    }
   };
 
   

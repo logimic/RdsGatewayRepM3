@@ -584,7 +584,7 @@ template <typename S, typename R>
         return m_recv_data;
       }
 
-      R getType() {
+      R getType() const {
         return m_recv_type;
       }
     private:
@@ -1033,7 +1033,7 @@ class GetFlagsCmd {
         impl.deserialize(d);
       }
 
-      data_t getData() {
+      data_t getData() const {
         return impl.getType();
       }
 

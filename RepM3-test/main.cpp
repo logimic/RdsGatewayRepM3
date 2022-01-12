@@ -185,7 +185,7 @@ TEST(command_serialize_base_no_data, command_handler) {
     std::vector<uint8_t> buffer = cmd.serialize(td);
 
     // expected buffer
-    std::vector<uint8_t> exp{0xb1,0x2,0xa,0x5,0x7, 0x18, 0xb2};
+    std::vector<uint8_t> exp{0xb1,0x3,0xa,0x5,0x7, 0x19, 0xb2};
 
     ASSERT_EQ(buffer, exp) << "Buffers are not equal";    
 }
@@ -212,7 +212,7 @@ TEST(get_version_cmd, command_handler) {
 
     // verify deserialization
     GetVersionCmd::data_t d;
-    cmd.deserialize(std::vector<uint8_t>{0xB1,0x3,0x9,0x5,0x1,0x2,0x0,0x14,0xB2});
+    cmd.deserialize(std::vector<uint8_t>{0xB1,0x5,0x9,0x5,0x1,0x2,0x0,0x16,0xB2});
     d = cmd.getData();
     //EXPECT_EQ(ok, true);
     EXPECT_EQ(d.fw_version_minor, 0x5);
@@ -248,7 +248,7 @@ TEST(get_version, cmd_test) {
     EXPECT_EQ(d, exp);
 
     // receive response
-    ver.deserialize(std::vector<uint8_t>{0xB1,0x3,0x9,0x5,0x1,0x2,0x0,0x14,0xB2});
+    ver.deserialize(std::vector<uint8_t>{0xB1,0x5,0x9,0x5,0x1,0x2,0x0,0x16,0xB2});
         
     // read data
     GetVersion::Version v = ver.getVersion();
@@ -258,3 +258,89 @@ TEST(get_version, cmd_test) {
     EXPECT_EQ(v.release, 0x2);
     EXPECT_EQ(v.variant, 0x0);
 }
+
+TEST(settimedate, cmd_test) {
+    SetTimeAndDate d;
+
+    std::tm tm = {};
+    std::vector<uint8_t> vec;
+    //x22 = 34 (sec), x23 = 35 (min), xa = 10 (hour), xb = (12 - 1 day), x0 = Jan, x16 = 22 (year), x15 = 21 (century)
+    std::vector<uint8_t> exp{0xb1,0x8,0xc,0x22,0x23,0xa,0xb,0x0,0x16,0x15,0x99,0xb2};
+    // use predefined date/time
+    strptime("Wed Jan 12 2022 10:35:34", "%a %b %d %Y %H:%M:%S", &tm);
+    auto tp = std::chrono::system_clock::from_time_t(std::mktime(&tm));
+
+    d.setTime(tp);
+
+    vec = d.serialize();
+
+    EXPECT_EQ(vec, exp);
+}
+
+TEST(presettimedate, cmd_test) {
+    PresetTimeAndDate d;
+
+    std::tm tm = {};
+    std::vector<uint8_t> vec;
+    //x22 = 34 (sec), x23 = 35 (min), xa = 10 (hour), xb = (12 - 1 day), x0 = Jan, x16 = 22 (year), x15 = 21 (century)
+    std::vector<uint8_t> exp{0xb1,0x8,0x12,0x22,0x23,0xa,0xb,0x0,0x16,0x15,0x9F,0xb2};
+    // use predefined date/time
+    strptime("Wed Jan 12 2022 10:35:34", "%a %b %d %Y %H:%M:%S", &tm);
+    auto tp = std::chrono::system_clock::from_time_t(std::mktime(&tm));
+
+    d.setTime(tp);
+
+    vec = d.serialize();
+
+    EXPECT_EQ(vec, exp);
+}
+
+// print date and time string from timepoint
+using time_point = std::chrono::system_clock::time_point;
+std::string serializeTimePoint( const time_point& time)
+{
+    std::time_t tt = std::chrono::system_clock::to_time_t(time);
+    std::tm tm = *std::localtime(&tt); //GMT (UTC)
+
+    std::mktime(&tm);
+    return std::string(std::asctime(&tm));
+}
+
+TEST(getTime, cmd_test) {
+    GetTimeAndDate d;
+
+    std::vector<uint8_t> recv{0xb1,0x9,0xD,0x22,0x23,0xa,0xb,0x3,0x0,0x16,0x15,0x9e,0xb2};
+
+    d.deserialize(recv);
+
+    GetTimeAndDate::data_recv_t t = d.getData();
+
+    auto tp = d.convertToTimePoint(t);
+ 
+    // converted from Wed Jan 12 2022 10:35:34 -> only hour is different probably some UTC
+    EXPECT_STREQ(serializeTimePoint(tp).c_str(), "Wed Jan 12 10:35:34 2022\n");
+}
+
+TEST(centuryFromYear, data) {
+    int year = 2022;
+    int century;
+    century = DateTimeBase::centuryFromYear(year);
+
+    EXPECT_EQ(21, century);
+
+    year = 1900;
+
+    century = DateTimeBase::centuryFromYear(year);
+
+    EXPECT_EQ(19, century);
+}
+
+TEST(centuryToYear, data) {
+    int date = DateTimeBase::yearFromCentury(22, 21);
+    EXPECT_EQ(date, 2022);
+
+    date = DateTimeBase::yearFromCentury(00, 20);
+    EXPECT_EQ(date, 2000);
+}
+
+

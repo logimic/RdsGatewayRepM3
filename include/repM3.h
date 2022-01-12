@@ -507,7 +507,7 @@ template <typename S, typename R>
       std::vector<uint8_t> serialize(S d) {
         BaseData<S> s(d);
         m_data.push_back(start_byte);
-        m_data.push_back(sizeof(d)/sizeof(S) + 1);
+        m_data.push_back(sizeof(d) + 1);
         m_data.push_back(m_id);
         
         std::vector<uint8_t> ser = s.serialize();
@@ -536,7 +536,7 @@ template <typename S, typename R>
         }
 
         // compute crc and verify crc
-        std::vector<uint8_t> c{d.begin() + 1, d.end() - 2};
+        std::vector<uint8_t> c{d.cbegin() + 1, d.cend() - 2};
         uint8_t crc_data = crc(c);
         
         if (crc_data != d[d.size()-2]) {
@@ -547,14 +547,15 @@ template <typename S, typename R>
         }
 
         // check number of received elements
-        uint8_t nr_of_elements = c[0] + 1;
-        if ((c.size() - 2) != nr_of_elements) {
+        uint8_t nr_of_elements = c[0];
+   
+        if ((c.size() - 1) != nr_of_elements) {
           std::ostringstream os;
-          os << "Inconsistency in elements count. Expected:" << unsigned(nr_of_elements) << " but get:" << unsigned(c.size() - 2);
+          os << "Inconsistency in elements count. Expected:" << unsigned(nr_of_elements) << " but get:" << unsigned(c.size() -1 );
           std::logic_error ex(os.str().c_str());
           throw ex;
         }
-        
+        // c[1] is command ID
         if (c[1] != m_id) {
           std::ostringstream os;
           os << "Invalid ID. Expected:" << std::hex << unsigned(m_id) << " received:" << unsigned(c[1]);

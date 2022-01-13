@@ -826,7 +826,7 @@ template <typename S, typename R>
         return time;
       }
 
-      std::chrono::system_clock::time_point convertToTimePoint(data_recv_t data) {
+      std::chrono::system_clock::time_point convertToTimePoint(data_recv_t data) const {
         tm time;
         time.tm_sec = data.time_second.data;
         time.tm_min = data.time_minute.data;
@@ -903,7 +903,7 @@ template <typename S, typename R>
         impl.deserialize(d);
       }
 
-      data_recv_t getData() {
+      data_recv_t getData() const {
         return impl.getType();
       }
 

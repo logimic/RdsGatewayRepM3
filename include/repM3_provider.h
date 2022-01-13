@@ -70,7 +70,8 @@ class GetVersion : public GetVersionCmd {
   class GetTimeAndDate : public GetTimeAndDateCmd {
   public:
     std::chrono::system_clock::time_point getTime() const {
-      //...
+      GetTimeAndDateCmd::data_recv_t d = getData();
+      return convertToTimePoint(d);
     }
   };
 

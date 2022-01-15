@@ -1,6 +1,7 @@
 #pragma once
 
 #include <repM3.h>
+#include "rapidjson/pointer.h"
 
 namespace lgmc {
 

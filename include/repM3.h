@@ -50,6 +50,10 @@ namespace lgmc {
       return data == (uint8_t)other;
     }
 
+    bool operator!=(int other) const {
+      return data != (uint8_t)other;
+    }
+
     void operator=(uint32_t other) {
       data = uint8_t(other);
     }
@@ -1060,36 +1064,74 @@ class GetFlagsCmd {
     Impl<none, none, CMD_RESET_FLAGS> impl;
   };
 
-// TODO: response can have different sizes -> adjust code
+// GetReport can return 2 different responses thus we use this as base
 class GetReportCmd {
     public:
-      
       struct data_send_t {
         UINT8 report_index;
       };
+};
 
-      struct data_t{
-        UINT8 status;
-      };
+class GetReportShortCmd : public GetReportCmd {
+  public:
+   
+      PACK(struct data_t_short{
+        UINT8 index;
+        Short_Test_Report rep;
+      });
 
       void serialize(std::vector<uint8_t> &d) {
-        d = impl.serialize(); 
+        d = impl.serialize(m_idxShort); 
       }
 
       std::vector<uint8_t> serialize() {
-        return impl.serialize();
+        return impl.serialize(m_idxShort);
       }
 
       void deserialize(const std::vector<uint8_t> &d) {
         impl.deserialize(d);
       }
 
-      data_t getData() {
+      data_t_short getData() {
         return impl.getType();
       }
 
   private:
-    Impl<GetReportCmd::data_send_t, GetReportCmd::data_t, CMD_GET_REPORT> impl;
+    Impl<GetReportShortCmd::data_send_t, GetReportShortCmd::data_t_short, CMD_GET_REPORT> impl;
+  
+  protected:
+    data_send_t m_idxShort;
+  };
+
+  class GetReportLongCmd : public GetReportCmd{
+    public:
+
+      PACK(struct data_t_long{
+        UINT8 index;
+        Long_Test_Report rep;
+      });
+
+      void serialize(std::vector<uint8_t> &d) {
+        d = impl.serialize(m_idxLong); 
+      }
+
+      std::vector<uint8_t> serialize() {
+        return impl.serialize(m_idxLong);
+      }
+
+      void deserialize(const std::vector<uint8_t> &d) {
+        impl.deserialize(d);
+      }
+
+      data_t_long getData() {
+        return impl.getType();
+      }
+
+  private:
+    Impl<GetReportCmd::data_send_t, GetReportLongCmd::data_t_long, CMD_GET_REPORT> impl;
+  
+  protected:
+    data_send_t m_idxLong;
   };
 
   class AcknowledgeReportCmd {
@@ -1105,11 +1147,11 @@ class GetReportCmd {
       };
 
       void serialize(std::vector<uint8_t> &d) {
-        d = impl.serialize(); 
+        d = impl.serialize(m_data); 
       }
 
       std::vector<uint8_t> serialize() {
-        return impl.serialize();
+        return impl.serialize(m_data);
       }
 
       void deserialize(const std::vector<uint8_t> &d) {
@@ -1122,6 +1164,9 @@ class GetReportCmd {
 
   private:
     Impl<AcknowledgeReportCmd::data_send_t, AcknowledgeReportCmd::data_t, CMD_ACKNOWLEDGE_REPORT> impl;
+
+  protected:
+    data_send_t m_data;
   };
 
   class GetSystemStatus1Cmd {

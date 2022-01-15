@@ -112,7 +112,7 @@ class GetVersion : public GetVersionCmd {
   //class ResetFlagsCmd : public BaseCommand {
 
   // TODO: response can have different sizes -> adjust code
-  class GetReport : public GetReportCmd {
+  class GetReport : public GetReportShortCmd , public GetReportLongCmd {
   public:
     class LongReport {
       std::chrono::system_clock::time_point startTime; //maybe we can keep in ss:mm:hh, .... to 
@@ -135,30 +135,63 @@ class GetVersion : public GetVersionCmd {
       //....
     };
 
-    //to  prepare for request
-    void requestLongReport() {
-      //...
+    //index from 0 - 63, 64 used for getting oldest report
+    void requestLongReport(const int index) {
+      // set index for long report is + 128
+      m_idxLong.report_index = index + longReportOfsset;
     }
-    void requestShortReport() {
-      //...
+
+    //index from 0 - 63, 64 used for getting oldest report
+    void requestShortReport(const int index) {
+      m_idxShort.report_index = index;
     }
 
     //getting result
     LongReport getLongReport() {
-      //...
+      data_t_long report = cmdLong.getData();
+      if (isReportValid(report) != true) {
+        return LongReport{};
+      }
+      return LongReport{};
     }
+
     ShortReport getShortReport() {
-      //...
+      data_t_short report = cmdShort.getData();
+      if (isReportValid(report) != true) {
+        return ShortReport{};
+      }
+      return ShortReport{};
     }
+    private:
+      GetReportLongCmd cmdLong;
+      GetReportShortCmd cmdShort;
+      const int longReportOfsset = 128;
+
+    private:
+      template<typename T>
+      bool isReportValid(T d) {
+        return d.index != 0xFF;
+      }
   };
 
   class AcknowledgeReport : public AcknowledgeReportCmd {
   public:
-    void ackLongTest() { //... 
+    //index from 0 - 63
+    void ackLongTest(const int index) {
+      m_data.report_index = index + longReportOfsset;
     }
-    void ackShortTest() { //...
+ 
+    //index from 0 - 63
+    void ackShortTest(const int index) { 
+      m_data.report_index = index;
     }
-    bool getAckResult() {} //decode success/failure
+  
+    bool getAckResult() {
+
+    }
+
+    private:
+      const int longReportOfsset = 128;
   };
 
   //not prio now

@@ -116,21 +116,37 @@ class GetVersion : public GetVersionCmd {
   class GetReport : public GetReportShortCmd , public GetReportLongCmd {
   public:
     class LongReport {
-      std::chrono::system_clock::time_point startTime; //maybe we can keep in ss:mm:hh, .... to 
-      //charge_status
-      //cell_type
-      float bottomVoltage;
-      //...
+      public:
+        std::chrono::system_clock::time_point startTime; //maybe we can keep in ss:mm:hh, .... to 
+        int test_duration;
+        BATTSTATUS8::charge_status cell_status;
+        BATTSTATUS8::cell_type cell_type;
+        uint16_t startBottomVols;
+        uint8_t startLoadVolts;
+        uint8_t startLoadCurrent;
+        uint16_t testDurationAchieved;
+        uint8_t testDurationAchievedWithBothCells;
+        uint16_t endBottomVolts;
+        uint16_t endTopVolts;
+        uint8_t endLoadVolts;
+        uint8_t endLoadCurrent;
+        uint16_t bottomCellAmpHours;
+        uint16_t topCellAmpHours;
+        uint16_t bottomCellWattHours;
+        uint16_t topCellWattHours;
+        uint8_t exponents;
+        uint8_t testFlags;
 
-      rapidjson::Value encode(rapidjson::Document::AllocatorType & a) {
-        using namespace rapidjson;
-        Value val(Type::kObjectType);
-        //startTime directly as ss:mm:hh, .... or "ISO YYY-MM-DDThh:mm:ss" => will be stored to SQL DB?
-        Pointer("/bottomVoltage").Set(val, 3.0 , a); //TODO decode voltage
-        //...
-        return val;
-      }
-    };
+        rapidjson::Value encode(rapidjson::Document::AllocatorType & a) {
+          using namespace rapidjson;
+          Value val(Type::kObjectType);
+          Pointer("/startTime").Set(val, "123", a);
+          //startTime directly as ss:mm:hh, .... or "ISO YYY-MM-DDThh:mm:ss" => will be stored to SQL DB?
+          Pointer("/bottomVoltage").Set(val, 3.0 , a); //TODO decode voltage
+          //...
+          return val;
+        }
+      };
 
     class ShortReport {
       //....
@@ -153,7 +169,39 @@ class GetVersion : public GetVersionCmd {
       if (isReportValid(report) != true) {
         return LongReport{};
       }
-      return LongReport{};
+      LongReport r;
+
+      DateTimeBase dt;
+      DateTimeBase::data_recv_t data;
+      data.date_year = report.rep.start_date.year();
+      data.date_month = report.rep.start_date.month();
+      data.date_day = report.rep.start_date.day_of_month();
+      data.time_hour = report.rep.start_time.hour();
+      data.time_minute = report.rep.start_time.minute();
+      data.time_second = report.rep.start_time.seconds();
+
+      r.startTime = dt.convertToTimePoint(data);
+      
+      r.test_duration = report.rep.test_duration.value();
+      r.cell_status = report.rep.start_cell_mode.cell_status_val();
+      r.cell_type = report.rep.start_cell_mode.cell_type_val();
+      r.startBottomVols = report.rep.start_bottom_cell_volts.data;
+
+      r.startLoadCurrent = report.rep.start_load_current.data;
+      r.testDurationAchieved = report.rep.test_duration_achieved.data;
+      r.testDurationAchievedWithBothCells = report.rep.test_duration_achieved_with_both_cells.data;
+      r.endBottomVolts = report.rep.end_bottom_cell_volts.data;
+      r.endTopVolts = report.rep.end_top_cell_volts.data;
+      r.endLoadVolts = report.rep.end_load_volts.data;
+      r.endLoadCurrent = report.rep.end_load_current.data;
+      r.bottomCellAmpHours = report.rep.bot_cell_amp_hours.data;
+      r.topCellAmpHours = report.rep.top_cell_amp_hours.data;
+      r.bottomCellWattHours = report.rep.bot_cell_watt_hours.data;
+      r.topCellWattHours = report.rep.top_cell_watt_hours.data;
+      r.exponents = report.rep.exponents.data;
+      r.testFlags = report.rep.test_flags.data;
+
+      return r;
     }
 
     ShortReport getShortReport() {

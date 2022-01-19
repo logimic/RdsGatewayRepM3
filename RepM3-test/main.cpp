@@ -5,20 +5,7 @@
 
 #include <gtest/gtest.h>
 
-#include "rapidjson/writer.h"
-
 using namespace lgmc;
-using namespace rapidjson;
-
-TEST(uint8, data_types) {
-    StringBuffer sb;
-    PrettyWriter<StringBuffer> writer(sb);
-    UINT8 d {8};
-
-    d.Serialize(writer);
-    
-    EXPECT_STREQ(sb.GetString(), "{\n    \"data\": 8\n}");
-}
 
 TEST(flags8, data_types) {
     FLAGS8 f;
@@ -264,8 +251,8 @@ TEST(settimedate, cmd_test) {
 
     std::tm tm = {};
     std::vector<uint8_t> vec;
-    //x22 = 34 (sec), x23 = 35 (min), xa = 10 (hour), xb = (12 - 1 day), x0 = Jan, x16 = 22 (year), x15 = 21 (century)
-    std::vector<uint8_t> exp{0xb1,0x8,0xc,0x22,0x23,0xa,0xb,0x0,0x16,0x15,0x99,0xb2};
+    //x22 = 34 (sec), x23 = 35 (min), xa = 10 (hour), xb = (12 - 1 day), x0 = Jan, x16 = 22 (year), x15 = 20 (century)
+    std::vector<uint8_t> exp{0xb1,0x8,0xc,0x22,0x23,0xa,0xb,0x0,0x16,0x14,0x98,0xb2};
     // use predefined date/time
     strptime("Wed Jan 12 2022 10:35:34", "%a %b %d %Y %H:%M:%S", &tm);
     auto tp = std::chrono::system_clock::from_time_t(std::mktime(&tm));
@@ -282,8 +269,8 @@ TEST(presettimedate, cmd_test) {
 
     std::tm tm = {};
     std::vector<uint8_t> vec;
-    //x22 = 34 (sec), x23 = 35 (min), xa = 10 (hour), xb = (12 - 1 day), x0 = Jan, x16 = 22 (year), x15 = 21 (century)
-    std::vector<uint8_t> exp{0xb1,0x8,0x12,0x22,0x23,0xa,0xb,0x0,0x16,0x15,0x9F,0xb2};
+    //x22 = 34 (sec), x23 = 35 (min), xa = 10 (hour), xb = (12 - 1 day), x0 = Jan, x16 = 22 (year), x15 = 20 (century)
+    std::vector<uint8_t> exp{0xb1,0x8,0x12,0x22,0x23,0xa,0xb,0x0,0x16,0x14,0x9E,0xb2};
     // use predefined date/time
     strptime("Wed Jan 12 2022 10:35:34", "%a %b %d %Y %H:%M:%S", &tm);
     auto tp = std::chrono::system_clock::from_time_t(std::mktime(&tm));
@@ -309,7 +296,7 @@ std::string serializeTimePoint( const time_point& time)
 TEST(getTime, cmd_test) {
     GetTimeAndDate d;
 
-    std::vector<uint8_t> recv{0xb1,0x9,0xD,0x22,0x23,0xa,0xb,0x3,0x0,0x16,0x15,0x9e,0xb2};
+    std::vector<uint8_t> recv{0xb1,0x9,0xD,0x22,0x23,0xa,0xb,0x3,0x0,0x16,0x14,0x9d,0xb2};
 
     d.deserialize(recv);
 
@@ -326,7 +313,7 @@ TEST(centuryFromYear, data) {
     int century;
     century = DateTimeBase::centuryFromYear(year);
 
-    EXPECT_EQ(21, century);
+    EXPECT_EQ(20, century);
 
     year = 1900;
 
@@ -336,7 +323,7 @@ TEST(centuryFromYear, data) {
 }
 
 TEST(centuryToYear, data) {
-    int date = DateTimeBase::yearFromCentury(22, 21);
+    int date = DateTimeBase::yearFromCentury(22, 20);
     EXPECT_EQ(date, 2022);
 
     date = DateTimeBase::yearFromCentury(00, 20);

@@ -696,6 +696,10 @@ template <typename S, typename R>
         return impl.getType();
       }
 
+      bool getStatus() {
+        return (getData().status.data == 170); 
+      }
+
   private:
       Impl<SetSettingsCmd::data_send_t, SetSettingsCmd::data_t, CMD_SET_SETTINGS> impl;
 
@@ -768,6 +772,10 @@ template <typename S, typename R>
 
       data_t getData() {
         return impl.getType();
+      }
+
+      bool getStatus() {
+        return (getData().status.data >= 0 && getData().status.data <= 6);
       }
 
   private:

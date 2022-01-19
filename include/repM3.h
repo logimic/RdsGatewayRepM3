@@ -53,6 +53,10 @@ namespace lgmc {
     void operator=(uint32_t other) {
       data = uint8_t(other);
     }
+
+    operator int() const {
+      return (int)data;
+    }
   };
 
   // 14-bit unsigned integer
@@ -832,18 +836,24 @@ template <typename S, typename R>
       }
 
       // helper for converting year to century
-      static int centuryFromYear(const uint32_t year) {
-        if (year <= 0) {
-            return -1;
-        } else if ((year % 100) == 0) {
-            return year / 100;
-        } else {
-            return (year / 100) + 1;
-        } 
+      static int centuryFromYear(int year) {
+        if (year < 0 || year > 9999) {
+          std::ostringstream os;
+          os << "Year is expected > 0 && < 9999, but passed: " << year;
+          std::logic_error ex(os.str().c_str());
+          throw ex;
+        }
+        return year / 100;
       }
 
-      static int yearFromCentury(const uint8_t year, const uint8_t century) {
-        return year != 0 ? ((century - 1) * 100) + year : (century * 100) + year;
+      static int yearFromCentury(uint8_t year, uint8_t century) {
+        if (year > 99 || century > 99) {
+          std::ostringstream os;
+          os << "year and century is expected < 99, but passed year: " << year << " century: " << century;
+          std::logic_error ex(os.str().c_str());
+          throw ex;
+        }
+        return (century * 100) + year;
       }
   };
 

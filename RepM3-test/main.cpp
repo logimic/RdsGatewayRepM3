@@ -5,20 +5,7 @@
 
 #include <gtest/gtest.h>
 
-#include "rapidjson/writer.h"
-
 using namespace lgmc;
-using namespace rapidjson;
-
-TEST(uint8, data_types) {
-    StringBuffer sb;
-    PrettyWriter<StringBuffer> writer(sb);
-    UINT8 d {8};
-
-    d.Serialize(writer);
-    
-    EXPECT_STREQ(sb.GetString(), "{\n    \"data\": 8\n}");
-}
 
 TEST(flags8, data_types) {
     FLAGS8 f;

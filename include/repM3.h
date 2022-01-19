@@ -36,6 +36,8 @@ namespace lgmc {
 
   // 8-bit unsigned integer 
   struct UINT8 {
+    UINT8(): data(0) {}
+
     uint8_t data;
     // compare operator
     bool operator==(UINT8 other) const {
@@ -789,6 +791,10 @@ template <typename S, typename R>
   class DateTimeBase {
     public:
       PACK(struct data_send_t {
+        UINT8 sc0;
+        UINT8 sc1;
+        UINT8 sc2;
+        UINT8 sc3;
         UINT8 time_second;
         UINT8 time_minute;
         UINT8 time_hour;

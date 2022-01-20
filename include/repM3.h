@@ -37,7 +37,8 @@ namespace lgmc {
   // 8-bit unsigned integer 
   struct UINT8 {
     UINT8(): data(0) {}
-
+    UINT8(int d) : data(d) {}   
+    
     uint8_t data;
     // compare operator
     bool operator==(UINT8 other) const {

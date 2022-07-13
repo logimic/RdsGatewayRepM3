@@ -612,15 +612,16 @@ template <typename S, typename R>
 
       std::vector<uint8_t> computeSecurityBytes(uint8_t id, int len, std::vector<uint8_t> d = std::vector<uint8_t>()) {
         std::vector<uint8_t> ret{9, 227, 0, id};
-        int val = 0;
+        uint32_t val = 0;
+        uint8_t lenb = 0xFF & len;
 
-        len += 1;
-        val += ~len;
+        //lenb += 1;
+        val += 0xFF & (~(lenb+1));
 
-        val += ~(id + 1);
+        val += 0xFF & (~(id + 1));
 
         for (auto x : d) {
-          val += ~(x + 1);
+          val += 0xFF & (~(x + 1));
         }
 
         ret[2] = val % 256;
@@ -834,10 +835,10 @@ template <typename S, typename R>
   class DateTimeBase {
     public:
       PACK(struct data_send_t {
-        UINT8 sc0;
-        UINT8 sc1;
-        UINT8 sc2;
-        UINT8 sc3;
+        //UINT8 sc0;
+        //UINT8 sc1;
+        //UINT8 sc2;
+        //UINT8 sc3;
         UINT8 time_second;
         UINT8 time_minute;
         UINT8 time_hour;
@@ -921,12 +922,12 @@ template <typename S, typename R>
         UINT8 status;
       };
 
-      void serialize(std::vector<uint8_t> &d) {
-        d = impl.serialize(m_time); 
+      void serialize(std::vector<uint8_t> &d, bool security = false) {
+        d = impl.serialize(m_time, security);
       }
 
-      std::vector<uint8_t> serialize() {
-        return impl.serialize(m_time);
+      std::vector<uint8_t> serialize(bool security = false) {
+        return impl.serialize(m_time, security);
       }
 
       void deserialize(const std::vector<uint8_t> &d) {

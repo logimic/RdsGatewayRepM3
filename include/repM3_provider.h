@@ -27,6 +27,12 @@ class GetVersion : public GetVersionCmd {
         
         return val;
       }
+      
+      std::string getAsString() {
+        std::ostringstream os;
+        os << major << '.' << minor << " pr:" << release << " var:" << variant;
+        return os.str();
+      }
     };
 
     Version getVersion() {
@@ -39,7 +45,8 @@ class GetVersion : public GetVersionCmd {
       retval.variant = version.hw_variant.data;
 
       return retval;
-    };
+    }
+
   };
 
 
@@ -81,6 +88,13 @@ class GetVersion : public GetVersionCmd {
     void setTime(const std::chrono::system_clock::time_point & tim) {
      m_time = convertFromTimePoint(tim);
     }
+  };
+
+  class ChangeRtcToPreset : public ChangeRtcToPresetCmd {
+  //public:
+  //  void setTime(const std::chrono::system_clock::time_point & tim) {
+  //    m_time = convertFromTimePoint(tim);
+  //  }
   };
 
   //will be sent via FRC ack broadcast

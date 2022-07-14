@@ -37,7 +37,8 @@ namespace lgmc {
   // 8-bit unsigned integer 
   struct UINT8 {
     UINT8(): data(0) {}
-
+    UINT8(int d) : data(d) {}   
+    
     uint8_t data;
     // compare operator
     bool operator==(UINT8 other) const {
@@ -485,10 +486,19 @@ template <typename S, typename R>
       }
       
       /* serialize data without parameters */
-      std::vector<uint8_t> serialize() {
+      std::vector<uint8_t> serialize(bool security_bytes = false) {
         m_data.push_back(start_byte);
-        m_data.push_back(1);
-        m_data.push_back(m_id);
+        if (security_bytes != false) {
+          // security bytes have always 4 bytes
+          m_data.push_back(1 + 4);
+          m_data.push_back(m_id);
+          std::vector<uint8_t> security = computeSecurityBytes(m_id, 1 + 4);
+          m_data.insert(m_data.end(), security.begin(), security.end());
+        } else {
+          m_data.push_back(1);
+          m_data.push_back(m_id);
+        }
+
         std::vector<uint8_t> c{m_data.begin() + 1, m_data.end()};
 
         m_data.push_back(crc(c));
@@ -496,16 +506,24 @@ template <typename S, typename R>
 
         return m_data;
       }
-      
+
       /* serialize data with parameters */
       //template <typename T>
-      std::vector<uint8_t> serialize(S d) {
+      std::vector<uint8_t> serialize(S d, bool security_bytes = false) {
         BaseData<S> s(d);
         m_data.push_back(start_byte);
-        m_data.push_back(sizeof(d) + 1);
+        if (security_bytes) {
+          m_data.push_back(sizeof(d) + 1 + 4);
+        } else {
+          m_data.push_back(sizeof(d) + 1);
+        }
         m_data.push_back(m_id);
         
         std::vector<uint8_t> ser = s.serialize();
+        if (security_bytes) {
+          std::vector<uint8_t> security = computeSecurityBytes(m_id, 1 + 4 + ser.size(), ser);
+          m_data.insert(m_data.end(), security.begin(), security.end());
+        }
         m_data.insert(m_data.end(), ser.begin(), ser.end());
         
         std::vector<uint8_t> c{m_data.begin() + 1, m_data.end()};
@@ -515,7 +533,7 @@ template <typename S, typename R>
 
         return m_data;
       }
-      
+
       //template <typename T>
       bool deserialize(std::vector<uint8_t> d) {
         BaseData<R> s;
@@ -590,6 +608,25 @@ template <typename S, typename R>
           val += x;
         }
         return val % 256;
+      }
+
+      std::vector<uint8_t> computeSecurityBytes(uint8_t id, int len, std::vector<uint8_t> d = std::vector<uint8_t>()) {
+        std::vector<uint8_t> ret{9, 227, 0, id};
+        uint32_t val = 0;
+        uint8_t lenb = 0xFF & len;
+
+        //lenb += 1;
+        val += 0xFF & (~(lenb+1));
+
+        val += 0xFF & (~(id + 1));
+
+        for (auto x : d) {
+          val += 0xFF & (~(x + 1));
+        }
+
+        ret[2] = val % 256;
+
+        return ret;
       }
 
     private:
@@ -731,11 +768,11 @@ template <typename S, typename R>
       });
 
       void serialize(std::vector<uint8_t> &d) {
-        d = impl.serialize(); 
+        d = impl.serialize(m_systemPage, true); 
       }
 
       std::vector<uint8_t> serialize() {
-        return impl.serialize();
+        return impl.serialize(m_systemPage, true);
       }
 
       void deserialize(const std::vector<uint8_t> &d) {
@@ -746,8 +783,15 @@ template <typename S, typename R>
         return impl.getType();
       }
 
+      void setPage(const UINT8 page) {
+        m_systemPage.system_settings_page = page;
+      }
+
   private:
     Impl<GetSettingsCmd::data_send_t, GetSettingsCmd::data_t, CMD_GET_SETTINGS> impl;
+  
+  protected:
+    data_send_t m_systemPage;
   };
 
   class SetScheduleCmd {
@@ -791,10 +835,10 @@ template <typename S, typename R>
   class DateTimeBase {
     public:
       PACK(struct data_send_t {
-        UINT8 sc0;
-        UINT8 sc1;
-        UINT8 sc2;
-        UINT8 sc3;
+        //UINT8 sc0;
+        //UINT8 sc1;
+        //UINT8 sc2;
+        //UINT8 sc3;
         UINT8 time_second;
         UINT8 time_minute;
         UINT8 time_hour;
@@ -878,12 +922,12 @@ template <typename S, typename R>
         UINT8 status;
       };
 
-      void serialize(std::vector<uint8_t> &d) {
-        d = impl.serialize(m_time); 
+      void serialize(std::vector<uint8_t> &d, bool security = false) {
+        d = impl.serialize(m_time, security);
       }
 
-      std::vector<uint8_t> serialize() {
-        return impl.serialize(m_time);
+      std::vector<uint8_t> serialize(bool security = false) {
+        return impl.serialize(m_time, security);
       }
 
       void deserialize(const std::vector<uint8_t> &d) {
@@ -981,12 +1025,12 @@ template <typename S, typename R>
         FLAGS8 result;
       };
 
-      void serialize(std::vector<uint8_t> &d) {
-        d = impl.serialize(); 
+      void serialize(std::vector<uint8_t> &d, bool security = false) {
+        d = impl.serialize(security); 
       }
 
-      std::vector<uint8_t> serialize() {
-        return impl.serialize();
+      std::vector<uint8_t> serialize(bool security = false) {
+        return impl.serialize(security);
       }
 
       void deserialize(const std::vector<uint8_t> &d) {

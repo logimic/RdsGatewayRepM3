@@ -27,6 +27,12 @@ class GetVersion : public GetVersionCmd {
         
         return val;
       }
+      
+      std::string getAsString() {
+        std::ostringstream os;
+        os << major << '.' << minor << " pr:" << release << " var:" << variant;
+        return os.str();
+      }
     };
 
     Version getVersion() {
@@ -39,7 +45,8 @@ class GetVersion : public GetVersionCmd {
       retval.variant = version.hw_variant.data;
 
       return retval;
-    };
+    }
+
   };
 
 
@@ -83,6 +90,13 @@ class GetVersion : public GetVersionCmd {
     }
   };
 
+  class ChangeRtcToPreset : public ChangeRtcToPresetCmd {
+  //public:
+  //  void setTime(const std::chrono::system_clock::time_point & tim) {
+  //    m_time = convertFromTimePoint(tim);
+  //  }
+  };
+
   //will be sent via FRC ack broadcast
   //class StartRtc : public BaseCommand {
   //class ChangeRtcToPresetCmd : public BaseCommand {
@@ -112,8 +126,7 @@ class GetVersion : public GetVersionCmd {
   //will be sent via FRC ack broadcast
   //class ResetFlagsCmd : public BaseCommand {
 
-  // TODO: response can have different sizes -> adjust code
-  class GetReport : public GetReportShortCmd , public GetReportLongCmd {
+  class GetReportLong : public GetReportLongCmd {
   public:
     class LongReport {
       public:
@@ -146,25 +159,16 @@ class GetVersion : public GetVersionCmd {
           //...
           return val;
         }
-      };
-
-    class ShortReport {
-      //....
     };
 
     //index from 0 - 63, 64 used for getting oldest report
-    void requestLongReport(const int index) {
+    void requestReport(const int index) {
       // set index for long report is + 128
-      m_idxLong.report_index = index + longReportOfsset;
-    }
-
-    //index from 0 - 63, 64 used for getting oldest report
-    void requestShortReport(const int index) {
-      m_idxShort.report_index = index;
+      m_idxLong.report_index = index + longReportOffset;
     }
 
     //getting result
-    LongReport getLongReport() {
+    LongReport getReport() {
       data_t_long report = cmdLong.getData();
       if (isReportValid(report) != true) {
         return LongReport{};
@@ -204,6 +208,28 @@ class GetVersion : public GetVersionCmd {
       return r;
     }
 
+    private:
+      GetReportLongCmd cmdLong;
+      const int longReportOffset = 128;
+
+    private:
+      template<typename T>
+      bool isReportValid(T d) {
+        return d.index != 0xFF;
+      }
+  };
+
+  class GetReportShort : public GetReportShortCmd {
+  public:
+    class ShortReport {
+      //....
+    };
+
+    //index from 0 - 63, 64 used for getting oldest report
+    void requestReport(const int index) {
+      m_idxShort.report_index = index;
+    }
+
     ShortReport getShortReport() {
       data_t_short report = cmdShort.getData();
       if (isReportValid(report) != true) {
@@ -211,16 +237,14 @@ class GetVersion : public GetVersionCmd {
       }
       return ShortReport{};
     }
-    private:
-      GetReportLongCmd cmdLong;
-      GetReportShortCmd cmdShort;
-      const int longReportOfsset = 128;
+  private:
+    GetReportShortCmd cmdShort;
 
-    private:
-      template<typename T>
-      bool isReportValid(T d) {
-        return d.index != 0xFF;
-      }
+  private:
+    template<typename T>
+    bool isReportValid(T d) {
+      return d.index != 0xFF;
+    }
   };
 
   class AcknowledgeReport : public AcknowledgeReportCmd {

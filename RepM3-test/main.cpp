@@ -308,6 +308,22 @@ TEST(getTime, cmd_test) {
     EXPECT_STREQ(serializeTimePoint(tp).c_str(), "Wed Jan 12 10:35:34 2022\n");
 }
 
+TEST(securityBytesTestNoPayload, data) {
+    ChangeRtcToPresetCmd cmd;
+    std::vector<uint8_t> exp{0xB1, 0x5, 23, 9, 227, 224, 23, 0xFF, 0xB2};
+    std::vector<uint8_t> d = cmd.serialize(true);
+    EXPECT_EQ(d, exp);
+}
+
+TEST(securityBytesTestWithPayload, data) {
+    GetSettingsCmd cmd;
+    cmd.setPage(1);
+
+    std::vector<uint8_t> exp{0xB1, 0x6, 15, 9, 227, 228, 15, 1, 0xF5, 0xB2};
+    std::vector<uint8_t> d = cmd.serialize();
+    EXPECT_EQ(d, exp);
+}
+
 TEST(centuryFromYear, data) {
     int year = 2022;
     int century;

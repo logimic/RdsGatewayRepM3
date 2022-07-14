@@ -1,0 +1,20 @@
+{
+  "component": "shape::TraceFileService",
+  "instance": "shape::TraceFileService-repm3gw",
+
+  "path": "",
+  "filename": "repm3gw.log",
+  "maxSizeMB": 1048576,
+  "timestampFiles": false,
+
+  "VerbosityLevels": [
+    {
+      "channel": 42,
+      "level": "DBG"
+    },
+    {
+      "channel": 43,
+      "level": "DBG"
+    }
+  ]
+}

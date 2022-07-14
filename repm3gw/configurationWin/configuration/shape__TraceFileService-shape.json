@@ -1,0 +1,16 @@
+{
+  "component": "shape::TraceFileService",
+  "instance": "shape::TraceFileService-default",
+
+  "path": "",
+  "filename": "shape.log",
+  "maxSizeMB": 1048576,
+  "timestampFiles": false,
+
+  "VerbosityLevels": [
+    {
+      "channel": 0,
+      "level": "DBG"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "component": "oegw::MsgMqttProvisioning",
+  "instance": "oegw::MsgMqttProvisioning",
+  
+  "RequiredInterfaces": [
+    {
+      "name": "shape::IMqttService",
+      "target": {
+        "instance": "MqttService-MsgMqttProvisioning"
+      }
+    }
+  ]
+
+}

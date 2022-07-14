@@ -1,0 +1,16 @@
+{
+  "component": "oegw::AwsFleetProv",
+  "instance": "oegw::AwsFleetProv",
+  
+  "brokerAddr": "ssl://a2ime1u7mj2qog-ats.iot.us-east-1.amazonaws.com:8883",
+  "templateName": "provisioningTestTemplate",
+
+  "RequiredInterfaces": [
+    {
+      "name": "shape::IMqttService",
+      "target": {
+        "instance": "MqttService-AwsFleetProv"
+      }
+    }
+  ]
+}

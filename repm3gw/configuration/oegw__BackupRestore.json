@@ -1,0 +1,4 @@
+{
+  "component": "oegw::BackupRestore",
+  "instance": "oegw::BackupRestore"
+}

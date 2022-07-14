@@ -1,0 +1,145 @@
+{
+  "applicationName": "RepM3",
+  "resourceDir": "",
+  "dataDir": "configuration",
+  "cacheDir": "configuration",
+  "userDir": "",
+  "configurationDir": "configuration",
+  "deploymentDir": "../../..",
+  "components": [
+    {
+      "name": "shape::TraceFormatService",
+      "libraryPath": "shape/bin",
+      "libraryName": "TraceFormatService",
+      "enabled": true,
+      "startlevel": -4
+    },
+    {
+      "name": "shape::TraceFileService",
+      "libraryPath": "shape/bin",
+      "libraryName": "TraceFileService",
+      "enabled": true,
+      "startlevel": -3
+    },
+    {
+      "name": "shape::LauncherService",
+      "libraryPath": "",
+      "libraryName": "",
+      "enabled": true,
+      "startlevel": -2
+    },
+    {
+      "name": "shape::ConfigurationService",
+      "libraryPath": "",
+      "libraryName": "",
+      "enabled": true,
+      "startlevel": -2
+    },
+    {
+      "name": "shape::WebsocketCppClientService",
+      "libraryPath": "shapeware/bin",
+      "libraryName": "WebsocketCppClientService",
+      "enabled": true,
+      "startlevel": 0
+    },
+    {
+      "name": "shape::MqttService",
+      "libraryPath": "shapeware/bin",
+      "libraryName": "MqttService",
+      "enabled": true,
+      "startlevel": 10
+    },
+    {
+      "name": "oegw::MsgMqttProvisioning",
+      "libraryPath": "oegw/bin",
+      "libraryName": "MsgMqttProvisioning",
+      "enabled": true,
+      "startlevel": 10
+    },
+    {
+      "name": "oegw::WorkerThread",
+      "libraryPath": "oegw/bin",
+      "libraryName": "WorkerThread",
+      "enabled": true,
+      "startlevel": 0
+    },
+
+    {
+      "name": "oegw::BackupRestore",
+      "libraryPath": "oegw/bin",
+      "libraryName": "BackupRestore",
+      "enabled": true,
+      "startlevel": 0
+    },
+    {
+      "name": "oegw::AwsFleetProv",
+      "libraryPath": "oegw/bin",
+      "libraryName": "AwsFleetProv",
+      "enabled": true,
+      "startlevel": 0
+    },
+    {
+      "name": "oegw::IqrfAdapt2",
+      "libraryPath": "oegw/bin",
+      "libraryName": "IqrfAdapt2",
+      "enabled": true,
+      "startlevel": 0
+    },
+    {
+      "name": "oegw::IdentityProvider",
+      "libraryPath": "oegw/bin",
+      "libraryName": "IdentityProvider",
+      "enabled": true,
+      "startlevel": 0
+    },
+    {
+      "name": "oegw::TimePointProvider",
+      "libraryPath": "oegw/bin",
+      "libraryName": "TimePointProvider",
+      "enabled": true,
+      "startlevel": 0
+    },
+    {
+      "name": "oegw::ServiceTopicListener",
+      "libraryPath": "oegw/bin",
+      "libraryName": "ServiceTopicListener",
+      "enabled": true,
+      "startlevel": 0
+    },
+    {
+      "name": "oegw::IqrfCloudApiHandler",
+      "libraryPath": "oegw/bin",
+      "libraryName": "IqrfCloudApiHandler",
+      "enabled": true,
+      "startlevel": 0
+    },
+    {
+      "name": "oegw::IpAdrProvider",
+      "libraryPath": "oegw/bin",
+      "libraryName": "IpAdrProvider",
+      "enabled": true,
+      "startlevel": 0
+    },
+    {
+      "name": "shape::CommandService",
+      "libraryPath": "shapeware/bin",
+      "libraryName": "CommandService",
+      "enabled": true,
+      "startlevel": 1
+    },
+    {
+      "name": "shape::CommandLineService",
+      "libraryPath": "shapeware/bin",
+      "libraryName": "CommandLineService",
+      "enabled": true,
+      "startlevel": 1
+    },
+    {
+      "name": "lgmc::RepM3Edge",
+      "libraryPath": "RdsGatewayRepM3/bin",
+      "libraryName": "RepM3Edge",
+      "enabled": true,
+      "startlevel": 4
+    }
+  ]
+}

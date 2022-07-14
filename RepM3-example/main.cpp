@@ -1,5 +1,5 @@
 #include "repM3_provider.h"
-#include "HexStringCoversion.h"
+#include "MyHexStringCoversion.h"
 
 using namespace lgmc;
 using namespace rapidjson;

@@ -1,0 +1,17 @@
+[Unit]
+Description=repm3gw gateway
+After=network.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/usr/bin
+ExecStart=/usr/bin/repm3gw /etc/repm3gw/config.json
+StandardOutput=syslog
+StandardError=syslog
+RestartSec=10
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

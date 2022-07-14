@@ -1,4 +1,4 @@
-#include "TraceHex.h"
+#include "MyTraceHex.h"
 #include <exception>
 #include <algorithm>
 #include <sstream>

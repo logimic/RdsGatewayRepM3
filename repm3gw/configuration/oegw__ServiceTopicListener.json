@@ -1,0 +1,14 @@
+{
+  "component": "oegw::ServiceTopicListener",
+  "instance": "oegw::ServiceTopicListener",
+  "overrideDevStage": "dev3",
+
+  "RequiredInterfaces": [
+    {
+      "name": "shape::IMqttService",
+      "target": {
+        "instance": "oegw::MsgMqttProvisioning"
+      }
+    }
+  ]
+}

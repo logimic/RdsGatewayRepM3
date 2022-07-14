@@ -1,0 +1,11 @@
+{
+  "component": "oegw::IdentityProvider",
+  "instance": "oegw::IdentityProvider",
+  
+  "topicRoot": "IotLogimic",
+  "devStage": "dev5",
+  
+  "vendor": "Logimic",
+  "product": "WinGw",
+  "serialNumber": "TesMachine-1-RepM3"
+}

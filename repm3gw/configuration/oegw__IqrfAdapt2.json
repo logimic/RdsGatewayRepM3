@@ -1,0 +1,14 @@
+{
+  "component": "oegw::IqrfAdapt2",
+  "instance": "oegw::IqrfAdapt2",
+  "RequiredInterfaces": [
+    {
+      "name": "shape::IWebsocketClientService",
+      "target": {
+        "instance": "WebsocketCppClientService-IqrfAdapt"
+      }
+    }
+  ],
+  "iqrf": {
+  }
+}

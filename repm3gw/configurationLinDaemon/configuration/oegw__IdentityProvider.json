@@ -1,0 +1,7 @@
+{
+  "component": "oegw::IdentityProvider",
+  "instance": "oegw::IdentityProvider",
+  
+  "topicRoot": "IotLogimic",
+  "devStage": "dev4"
+}

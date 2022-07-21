@@ -2,7 +2,7 @@
 
 #include "EnumStringConvertor.h"
 #include "JsonParseEncodeSupport.h"
-#include "DeviceApi.h" 
+#include "DeviceApiDev5.h" 
 #include "RepM3Device.h"
 #include "RepM3GwDevice.h"
 
@@ -79,10 +79,10 @@ namespace lgmc {
         rapidjson::Value val;
         Pointer("/name").Set(val, s.getName(), a);
         Pointer("/node").Set(val, s.getNode().encode(a), a);
-        Pointer("/dataFromNodeStr").Set(val, encodeBinary(s.getDataFromNode().data(), (int)s.getDataFromNode().size()), a);
-        Pointer("/dataFromNode").Set(val, oegw::encodeVect(m_repm3Device->getDataFromNode(),a), a);
-        Pointer("/paramGetStateStr").Set(val, encodeBinary(m_repm3Device->getParamGetState().data(), (int)m_repm3Device->getParamGetState().size()), a);
-        Pointer("/paramGetState").Set(val, oegw::encodeVect(m_repm3Device->getParamGetState(), a), a);
+        //Pointer("/dataFromNodeStr").Set(val, encodeBinary(s.getDataFromNode().data(), (int)s.getDataFromNode().size()), a);
+        //Pointer("/dataFromNode").Set(val, oegw::encodeVect(m_repm3Device->getDataFromNode(),a), a);
+        //Pointer("/paramGetStateStr").Set(val, encodeBinary(m_repm3Device->getParamGetState().data(), (int)m_repm3Device->getParamGetState().size()), a);
+        //Pointer("/paramGetState").Set(val, oegw::encodeVect(m_repm3Device->getParamGetState(), a), a);
         return val;
       }
 
@@ -136,12 +136,12 @@ namespace lgmc {
       }
 
       void setGateway(const RepM3GwDevice & gw) {
-        m_dataFromNodePeriodPtr = std::make_shared<int>(gw.m_dataFromNodePeriod);
-        m_getStatePeriodPtr = std::make_shared<int>(gw.m_getStatePeriod);
+        //m_dataFromNodePeriodPtr = std::make_shared<int>(gw.m_dataFromNodePeriod);
+        m_getStatePeriodPtr = std::make_shared<int>(gw.m_getFlagsPeriod);
         m_detectDevicesPeriodPtr = std::make_shared<int>(gw.m_detectDevicesPeriod);
-        m_wakeUpPtr = std::make_shared<int>(gw.m_wakeUp);
-        m_dataFromNodeLenPtr = std::make_shared<int>(gw.m_dataFromNodeLen);
-        m_sleepPtr = std::make_shared<bool>(gw.m_sleep);
+        //m_wakeUpPtr = std::make_shared<int>(gw.m_wakeUp);
+        //m_dataFromNodeLenPtr = std::make_shared<int>(gw.m_dataFromNodeLen);
+        //m_sleepPtr = std::make_shared<bool>(gw.m_sleep);
         m_sensorHwpidVectPtr = std::make_shared<std::vector<int>>(gw.m_sensorHwpidVect);
         m_gwSet = true;
       }
@@ -307,5 +307,54 @@ namespace lgmc {
     private:
       GatewayItem m_gateway;
     };
+  
+    //////////////////////////////////////////////////
+    class NotifyMsg
+    {
+    public:
+      NotifyMsg()
+      {
+      }
+
+      virtual ~NotifyMsg() {}
+
+      //void parseRequest(const rapidjson::Value& v) override
+      //{
+      //  GenericMsg::parseRequest(v);
+      //}
+
+      void encode(rapidjson::Value& v, rapidjson::Document::AllocatorType& a) const
+      {
+        //GenericMsg::encodeResponse(v, a);
+        using namespace std::chrono;
+        rapidjson::Pointer("/ntf/msgId").Set(v, m_msgId, a);
+        rapidjson::Pointer("/ntf/tst").Set(v, duration_cast<seconds>(m_tp.time_since_epoch()).count(), a); //TODO ISO
+        rapidjson::Pointer("/data/devs").Set(v, oegw::encodeVect(m_repM3DeviceVect, a), a);
+      }
+
+      //void parseResponse(const rapidjson::Value& v) override
+      //{
+      //  THROW_EXC_TRC_WAR(std::logic_error, "not implemented")
+      //}
+
+      void setTime(const std::chrono::system_clock::time_point& tp) { m_tp = tp; }
+
+      void setRepM3Devices(std::map < std::string, RepM3DeviceShPtr >& repM3DevicesMap) {
+        for (auto& it : repM3DevicesMap) {
+          m_repM3DeviceVect.push_back(RepM3DeviceItem(it.second));
+        }
+      }
+
+      void setGateway(const RepM3GwDevice& gw) {
+        m_gateway.setGateway(gw);
+      }
+    private:
+      std::chrono::system_clock::time_point m_tp;
+      std::vector<RepM3DeviceItem> m_repM3DeviceVect;
+      GatewayItem m_gateway;
+      std::string m_msgId;
+    };
+
   }
+
 }

@@ -16,10 +16,8 @@
 #include "Trace.h"
 
 #include "IqrfAdaptUtils.h"
-#include "EmbedOs.h"
 #include "EmbedUart.h"
 #include "EmbedFRC.h"
-#include "EmbedRAM.h"
 
 #include "JsonMacro.h"
 #include "DeviceApi.h"
@@ -92,7 +90,7 @@ namespace lgmc {
       auto allNodeMap = m_iIqrfAdapt->getNodes();
 
       //TODO
-      const int REPM3_HWPID = 0022;
+      const int REPM3_HWPID = 0x22;
 
       std::map<unsigned, oegw::iqrfapi::Node> nadrSensorNodeMap;
       for (auto nodeIt : allNodeMap) {
@@ -147,15 +145,14 @@ namespace lgmc {
 
     std::vector<uint8_t>  sendWriteRead(int nadr, const std::vector<uint8_t> & writeDataVec)
     {
-      const int uartTimeout = 4;
-
-      std::string instructionType = InstructionTypesConvert::int2str(writeDataVec[2]);
-      TRC_FUNCTION_ENTER(">>> " << PAR(nadr) << PAR(instructionType));
+      //std::string instructionType = InstructionTypesConvert::int2str(writeDataVec[2]);
+      //TRC_FUNCTION_ENTER(">>> " << PAR(nadr) << PAR(instructionType));
+      TRC_FUNCTION_ENTER(">>> " << PAR(nadr));
 
       std::vector<uint8_t> retval;
 
       iqrfapi::embed::uart::WriteReadPtr writeRead(shape_new iqrfapi::embed::uart::WriteRead(
-        nadr, 0xffff, m_gatewayDevice.m_uartTimeout, writeDataVec));
+        nadr, 0xffff, UART_WR_TOUT, writeDataVec));
 
       writeRead->setInstanceMsgId();
       writeRead->setVerbose(true);
@@ -163,24 +160,7 @@ namespace lgmc {
       m_iIqrfAdapt->executeMsgTransaction(writeRead, 120000);
       retval = writeRead->getReadData();
 
-      TRC_FUNCTION_LEAVE("<<< " << PAR(nadr) << PAR(instructionType));
-      return retval;
-    }
-
-    std::vector<uint8_t>  readRam(int nadr)
-    {
-      TRC_FUNCTION_ENTER(">>> " << PAR(nadr));
-
-      std::vector<uint8_t> retval;
-
-      iqrfapi::embed::ram::ReadPtr readRamMsg(shape_new iqrfapi::embed::ram::Read(nadr, 0xFFFF, 0, 24));
-
-      readRamMsg->setInstanceMsgId();
-      readRamMsg->setVerbose(true);
-
-      m_iIqrfAdapt->executeMsgTransaction(readRamMsg, 120000);
-      retval = readRamMsg->getReadData();
-
+      //TRC_FUNCTION_LEAVE("<<< " << PAR(nadr) << PAR(instructionType));
       TRC_FUNCTION_LEAVE("<<< " << PAR(nadr));
       return retval;
     }
@@ -188,261 +168,12 @@ namespace lgmc {
     // regular actions - sensor frc, polling, it respect device sleeping, etc
     void sendFrc(const std::chrono::system_clock::time_point & timePointNow)
     {
-      TRC_FUNCTION_ENTER("");
-      //handleAllEvented();
+      //TRC_FUNCTION_ENTER("");
+      //send FRC getFlags
 
-      using namespace std::chrono;
-
-      bool get_data_from_node = false;
-
-      auto time = std::chrono::system_clock::to_time_t(timePointNow);
-      auto tm = *std::localtime(&time);
-      int minutes_since_day = tm.tm_hour * 60 + tm.tm_min;
-
-      std::lock_guard<std::mutex> lck(m_deviceMtx);
-
-      int act_period_data_from_node = minutes_since_day / m_gatewayDevice.m_dataFromNodePeriod;
-
-      if (m_gatewayDevice.m_lastDataFromNodePeriod != act_period_data_from_node) {
-        m_gatewayDevice.m_lastDataFromNodePeriod = act_period_data_from_node;
-        get_data_from_node = true;
-      }
-
-      //broadcast
-      //if (get_data_from_node) {
-      //  sendWriteRead(0xFF, m_midSensorShPtrMap.begin()->second, cmdVec_DATA_FROM_NODE);
-      //}
-
-      for (auto sanIt : m_RepM3DeviceShPtrMap) {
-
-        RepM3DeviceShPtr & san = sanIt.second;
-        int nadr = san->getNode().m_nadr;
-
-        int act_period_get_state = minutes_since_day / m_gatewayDevice.m_getStatePeriod;
-        if (san->m_lastGetStatePeriod != act_period_get_state) {
-          TRC_DEBUG(PAR(nadr) << PAR(san->m_getStateCnt++) << PAR(san->m_lastGetStatePeriod) << PAR(act_period_get_state));
-          //TODO check wake_up time
-          san->m_lastGetStatePeriod = act_period_get_state;
-
-          try {
-            san->setParamGetState(sendWriteRead(nadr, cmdVec_GET_STATE));
-          }
-          catch (iqrfapi::IqrfError & e) {
-            CATCH_EXC_TRC_WAR(iqrfapi::IqrfError, e, "Cannot get state: " << NAME_PAR(NADR, san->getNode().m_nadr));
-          }
-        }
-
-        if (get_data_from_node) {
-          TRC_DEBUG(PAR(san->m_dataFromNodeCnt++) << PAR(nadr));
-          //TODO check wake_up time
-          //TODO read by FRC
-          try {
-            san->setDataFromNode(sendWriteRead(nadr, cmdVec_DATA_FROM_NODE));
-            
-            //send ACK
-            auto res = sendWriteRead(nadr, cmdVec_ACKNOWLEDGE_TO_NODE);
-            std::string resStr = encodeBinary(res.data(), (int)res.size());
-            TRC_DEBUG(PAR(nadr) << "ACK: " << resStr);
-            
-            TRC_DEBUG(PAR(nadr) << NAME_PAR(san->getDataFromNode(), encodeBinary(san->getDataFromNode().data(), san->getDataFromNode().size())));
-
-            auto readRamRes = readRam(nadr);
-            auto readRamResStr = encodeBinary(readRamRes.data(), readRamRes.size());
-            TRC_DEBUG(PAR(nadr) << PAR(readRamResStr));
-          }
-          catch (iqrfapi::IqrfError & e) {
-            CATCH_EXC_TRC_WAR(iqrfapi::IqrfError, e, "Cannot read data: " << NAME_PAR(NADR, san->getNode().m_nadr));
-          }
-        }
-
-        //while (san->isCommand()) {
-        //  auto cmd = san->fetchCommand();
-        //  TRC_INFORMATION("send cmd: " << PAR(nadr) << NAME_PAR(cmd, encodeBinary(cmd.data(), cmd.size())));
-        //  auto reply = sendWriteRead(nadr, cmd);
-        //  if (isReplyOk(reply)) {
-        //    TRC_DEBUG("Reply OK")
-        //  }
-        //  else {
-        //    TRC_INFORMATION("reply on cmd is not confirmed: "
-        //      << PAR(nadr) << NAME_PAR(cmd, encodeBinary(cmd.data(), cmd.size())) << NAME_PAR(cmd, encodeBinary(reply.data(), reply.size())));
-        //  }
-        //}
-
-        //std::set<int> nadrSet;
-        //for (auto sanIt : m_midSensorShPtrMap) {
-        //  SensorDeviceShPtr & san = sanIt.second;
-        //  int nadr = san->getNode().m_nadr;
-        //  nadrSet.insert(nadr);
-        //}
-
-        //getDataAndAck(nadrSet);
-      }
-
-      //TODO watch command and update commanded sensors
-      if (!m_gatewayDevice.m_sleep || (m_gatewayDevice.m_sleep && get_data_from_node)) {
-        commitCommands();
-      }
-
-      if (get_data_from_node) { //TODO or command
-        repm3api::DeviceDataMsg msg;
-
-        msg.setGateway(m_gatewayDevice);
-        msg.setRepM3Devices(m_RepM3DeviceShPtrMap);
-        msg.setTime(timePointNow);
-        // set msgId to timestamp
-        msg.setMsgId(std::to_string(std::chrono::duration_cast<std::chrono::seconds>(timePointNow.time_since_epoch()).count()));
-
-        rapidjson::Document resDoc;
-        msg.encodeResponse(resDoc, resDoc.GetAllocator());
-
-        std::string notifyTopic = m_appGeneralNotifyTopic + msg.getType();
-        m_iMsgService->publish(notifyTopic, resDoc, 1);
-
-        rapidjson::StringBuffer buffer;
-        rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
-        resDoc.Accept(writer);
-        std::string msgStr = buffer.GetString();
-        TRC_DEBUG("repm3api::DeviceDataMsg: " << std::endl << msgStr);
-      }
-
-      TRC_FUNCTION_LEAVE("");
+      //TRC_FUNCTION_LEAVE("");
     }
 
-#if 0
-    void getDataAndAck(std::set<int> nadrSet)
-    {
-      TRC_FUNCTION_ENTER("");
-
-      //TODO read by FRC
-      try {
-        std::set<int> unreachableNodes = nadrSet;
-        std::set<int> ackNodes;
-
-        {
-          const uint8_t pnum = 0x0C; // uart
-          const uint8_t pcmd = 0x02; // ReadWrite
-          uint16_t hwpid = 0xFFFF; //Hwpid
-          std::vector<uint8_t> cmdVec = { 4 }; //prepend wait 40 ms when sent by selectiveBatch
-          cmdVec.insert(cmdVec.end(), cmdVec_DATA_FROM_NODE.begin(), cmdVec_DATA_FROM_NODE.end());
-
-          iqrfapi::embed::frc::AcknowledgedBroadcastBitsPtr frcMsg(shape_new iqrfapi::embed::frc::AcknowledgedBroadcastBits(nadrSet, pnum, pcmd, hwpid, cmdVec));
-
-          std::ostringstream os;
-          os << frcMsg->getMsgId() << "-extra";
-          iqrfapi::embed::frc::ExtraResultPtr extraMsg(shape_new iqrfapi::embed::frc::ExtraResult());
-          extraMsg->setMsgId(os.str());
-
-          m_iIqrfAdapt->executeMsgTransaction(frcMsg, 60000);
-          m_iIqrfAdapt->executeMsgTransaction(extraMsg, 3000);
-
-          frcMsg->getFrcDataAs2bit(ackNodes, extraMsg->getFrcData());
-
-          unreachableNodes = oegw::iqrfadapt::substractSet(nadrSet, ackNodes);
-
-          unreachableNodes = oegw::iqrfadapt::substractSet(nadrSet, ackNodes);
-
-          //trace unreachable
-          if (unreachableNodes.size() > 0) {
-            std::ostringstream os;
-            for (int node : unreachableNodes) {
-              os << node << ", ";
-            }
-            TRC_WARNING("DATA_FROM_NODE is not delivered to unreachable nodes: " << os.str())
-          }
-        }
-
-        //////////////////////////////////
-        {
-          const uint8_t pnum = 0x05; // RAM
-          const uint8_t pcmd = 0x00; // read
-          uint16_t hwpid = 0xFFFF; //Hwpid
-          std::vector<uint8_t> cmdVec = { 0, 4 };
-
-          //read 1st 4-bytes
-          //MemoryRead4B(const std::set<int> & selectedNodes, uint16_t address, uint8_t pnum, uint8_t pcmd, bool inc, std::vector<uint8_t> pdata = std::vector<uint8_t>())
-          std::shared_ptr<iqrfapi::embed::frc::MemoryRead4B> frcMsgPtr(
-            shape_new iqrfapi::embed::frc::MemoryRead4B(nadrSet, 0x4A0, pnum, pcmd, true, cmdVec));
-
-          std::ostringstream os;
-          os << frcMsgPtr->getMsgId() << "-extra";
-          iqrfapi::embed::frc::ExtraResultPtr extraMsgPtr(shape_new iqrfapi::embed::frc::ExtraResult());
-          extraMsgPtr->setMsgId(os.str());
-
-          m_iIqrfAdapt->executeMsgTransaction(frcMsgPtr, 60000);
-          m_iIqrfAdapt->executeMsgTransaction(extraMsgPtr, 3000);
-
-          std::map<int, uint32_t> resultMap1;
-          frcMsgPtr->getFrcDataAs(resultMap1, extraMsgPtr->getFrcData());
-
-          //debug TRC
-          std::ostringstream os2;
-          for (auto & it : resultMap1) {
-            uint32_t val = it.second;
-            os2 << NAME_PAR(nadr, it.first) << ": " << encodeBinary((uint8_t*)&val, sizeof(val)) << std::endl;
-          }
-          TRC_DEBUG(os2.str());
-        }
-        
-        //unreachableNodes = oegw::iqrfadapt::substractSet(nadrSet, ackNodes);
-
-        ////trace unreachable
-        //if (unreachableNodes.size() > 0) {
-        //  std::ostringstream os;
-        //  for (int node : unreachableNodes) {
-        //    os << node << ", ";
-        //  }
-        //  TRC_WARNING("DATA_FROM_NODE is not delivered to unreachable nodes: " << os.str())
-        //}
-
-        ////MemoryRead4B(const std::set<int> & selectedNodes, uint16_t address, uint8_t pnum, uint8_t pcmd, bool inc, std::vector<uint8_t> pdata = std::vector<uint8_t>())
-        //std::shared_ptr<iqrfapi::embed::frc::MemoryRead4B> MemoryRead4BPtr AckMsg(ackNodes, 0x620);
-
-        ////trace and update acknowledged
-        //if (ackNodes.size() > 0) {
-        //  std::ostringstream os;
-        //  for (auto nadr : ackNodes) {
-        //    auto found = nadrSanMap.find(nadr);
-        //    if (found != nadrSanMap.end()) {
-        //      found->second->setReadHourDayCtxThing(ctx);
-        //      os << nadr << ", ";
-        //    }
-        //    else {
-        //      TRC_WARNING("Inconsistent FRC result for: " << PAR(nadr));
-        //    }
-        //  }
-        //  TRC_INFORMATION("RECORD for " << PAR(day) << PAR(hourInterval) << " written to nodes: " << os.str())
-        //}
-      }
-      catch (iqrfapi::IqrfError & e) {
-        //CATCH_EXC_TRC_WAR(iqrfapi::IqrfError, e, "Cannot read data: " << NAME_PAR(NADR, san->getNode().m_nadr));
-        CATCH_EXC_TRC_WAR(iqrfapi::IqrfError, e, "Cannot read data: ");
-      }
-
-      TRC_FUNCTION_LEAVE("");
-    }
-#endif
-
-    // must be aready mutexed
-    void commitCommands()
-    {
-      for (auto sanIt : m_RepM3DeviceShPtrMap) {
-
-        RepM3DeviceShPtr & san = sanIt.second;
-        int nadr = san->getNode().m_nadr;
-        while (san->isCommand()) {
-          auto cmd = san->fetchCommand();
-          TRC_INFORMATION("send cmd: " << PAR(nadr) << NAME_PAR(cmd, encodeBinary(cmd.data(), cmd.size())));
-          auto reply = sendWriteRead(nadr, cmd);
-          if (isReplyOk(reply)) {
-            TRC_DEBUG("Reply OK")
-          }
-          else {
-            TRC_INFORMATION("reply on cmd is not confirmed: "
-              << PAR(nadr) << NAME_PAR(cmd, encodeBinary(cmd.data(), cmd.size())) << NAME_PAR(cmd, encodeBinary(reply.data(), reply.size())));
-          }
-        }
-      }
-    }
 
     //--------------------------------------------------
     // CLD MQTT
@@ -521,7 +252,7 @@ namespace lgmc {
         auto foundSensor = m_RepM3DeviceShPtrMap.find(name);
         if (foundSensor != m_RepM3DeviceShPtrMap.end()) {
           RepM3Device & san = *foundSensor->second;
-          san.setCommand(msg.getCommandData()[commandNumPosition], msg.getCommandData());
+          //san.setCommand(msg.getCommandData()[commandNumPosition], msg.getCommandData());
         }
       }
 
@@ -544,18 +275,18 @@ namespace lgmc {
       
       std::lock_guard<std::mutex> lck(m_deviceMtx);
 
-      if (gw.getDataFromNodePeriodPtr())
-        m_gatewayDevice.m_dataFromNodePeriod = *gw.getDataFromNodePeriodPtr();
+      //if (gw.getDataFromNodePeriodPtr())
+      //  m_gatewayDevice.m_dataFromNodePeriod = *gw.getDataFromNodePeriodPtr();
       if (gw.getGetStatePeriodPtr())
-        m_gatewayDevice.m_getStatePeriod = *gw.getGetStatePeriodPtr();
+        m_gatewayDevice.m_getFlagsPeriod = *gw.getGetStatePeriodPtr();
       if (gw.getDetectDevicesPeriodPtr())
         m_gatewayDevice.m_detectDevicesPeriod = *gw.getDetectDevicesPeriodPtr();
-      if (gw.getWakeUpPtr())
-        m_gatewayDevice.m_wakeUp = *gw.getWakeUpPtr();
-      if (gw.getDataFromNodeLenPtr())
-        m_gatewayDevice.m_dataFromNodeLen = *gw.getDataFromNodeLenPtr();
-      if (gw.getSleepPtr())
-        m_gatewayDevice.m_sleep = *gw.getSleepPtr();
+      //if (gw.getWakeUpPtr())
+      //  m_gatewayDevice.m_wakeUp = *gw.getWakeUpPtr();
+      //if (gw.getDataFromNodeLenPtr())
+      //  m_gatewayDevice.m_dataFromNodeLen = *gw.getDataFromNodeLenPtr();
+      //if (gw.getSleepPtr())
+      //  m_gatewayDevice.m_sleep = *gw.getSleepPtr();
       if (gw.getSensorHwpidVectPtr())
         m_gatewayDevice.m_sensorHwpidVect = *gw.getSensorHwpidVectPtr();
 
@@ -597,7 +328,7 @@ namespace lgmc {
 
         const auto & par = m_iIdentityProvider->getParams();
 
-        if (par.m_devStage == "dev4") {
+        if (par.m_devStage == "dev4" || par.m_devStage == "dev5") {
           //dev4
           os << m_iMsgService->getTopicPrefix() << '/'
             << m_iLaunchService->getAppName();
@@ -629,12 +360,17 @@ namespace lgmc {
       void usage(std::ostringstream& ostr)
       {
         ostr <<
-          std::left << std::setw(20) << "sn h" << "test comm help" << std::endl <<
-          std::left << std::setw(20) << "sn l" << "list detected sensors" << std::endl <<
-          std::left << std::setw(20) << "sn p <nadr> <num> <val>" << "set NADR (-1 ... all) parameter number, value" << std::endl <<
-          std::left << std::setw(20) << "sn f <nadr>" << "forced flush of NADR (-1 ... all)" << std::endl <<
-          std::left << std::setw(20) << "sn i <nadr>" << "identification of NADR (-1 ... all)" << std::endl <<
-          std::left << std::setw(20) << "sn gw <sleep>" << "cmd gw to swith sleep on/off (1/0)" << std::endl <<
+          std::left << std::setw(20) << "mc h" << "test comm help" << std::endl <<
+          std::left << std::setw(20) << "mc l" << "list detected sensors" << std::endl <<
+          std::left << std::setw(20) << "mc ver" << "get version" << std::endl <<
+          std::left << std::setw(20) << "mc flg" << "get flags" << std::endl <<
+          std::left << std::setw(20) << "mc frc" << "get flags by FRC 1-bit" << std::endl <<
+          std::left << std::setw(20) << "mc frc8" << "get flags by FRC 1-Byte" << std::endl <<
+          std::left << std::setw(20) << "mc gt" << "get time" << std::endl <<
+          std::left << std::setw(20) << "mc st <sec>" << "set time, sec: rel in secnds to actual" << std::endl <<
+          std::left << std::setw(20) << "mc pst <sec>" << "preset time, sec: rel in seconds to actual" << std::endl <<
+          std::left << std::setw(20) << "mc cpst" << "change to preset time" << std::endl <<
+          std::left << std::setw(20) << "mc rtc" << "start RTC" << std::endl <<
           std::endl;
       }
 
@@ -651,19 +387,17 @@ namespace lgmc {
 
         TRC_DEBUG("process: " << PAR(subcmd));
 
-        //////////////
         if (subcmd == "h") {
           usage(ostr);
         }
-        //////////////
         else if (subcmd == "l") {
           //list sensors
           try {
             auto sensList = m_imp->getAllRepM3EdgeDevicesNames();
-            std::string dotstr;
-            istr >> dotstr;
+            //std::string dotstr;
+            //istr >> dotstr;
 
-            for (auto & sen : sensList) {
+            for (auto& sen : sensList) {
               ostr << std::endl << sen;
             }
             ostr << std::endl;
@@ -672,234 +406,6 @@ namespace lgmc {
             ostr << e.what();
           }
         }
-        else if (subcmd == "p") {
-          //cmd to set parameter
-          try {
-            int nadr, num, val;
-            istr >> nadr >> num >> val;
-
-            rapidjson::Document reqDoc;
-            auto &a = reqDoc.GetAllocator();
-            repm3api::SensorCmdMsg cmdMsg;
-            cmdMsg.setMsgId("test-cmd");
-
-            if (nadr < 0) {
-              //get all
-              cmdMsg.setSensorDeviceNames(m_imp->getAllRepM3EdgeDevicesNames());
-            }
-            else {
-              std::ostringstream os;
-              os << REPM3_DEVICE_NAME << '-' << nadr;
-              std::string name = os.str();
-              cmdMsg.setSensorDeviceNames({ os.str() });
-            }
-
-            std::vector<uint8_t> cmd = { 2, 5, 0, 0, 3 };
-            cmd[2] = num;
-            cmd[3] = val;
-            cmdMsg.setCommandData(cmd);
-
-            cmdMsg.encodeRequest(reqDoc, a);
-
-            rapidjson::StringBuffer buffer;
-            rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
-            reqDoc.Accept(writer);
-            std::string msgStr = buffer.GetString();
-
-            TRC_DEBUG("reqDoc: " << std::endl << msgStr);
-
-            m_imp->handleApiMessage("", reqDoc, "");
-
-            //updated value
-            ostr << "send cmd: " << encodeBinary(cmd.data(), cmd.size());
-            ;
-          }
-          catch (std::exception& e) {
-            ostr << e.what();
-          }
-        }
-        else if (subcmd == "f") {
-          //forced flush
-          try {
-            int nadr;
-            istr >> nadr;
-
-            rapidjson::Document reqDoc;
-            auto &a = reqDoc.GetAllocator();
-            repm3api::SensorCmdMsg cmdMsg;
-            cmdMsg.setMsgId("test-flush");
-
-            if (nadr < 0) {
-              //get all
-              cmdMsg.setSensorDeviceNames(m_imp->getAllRepM3EdgeDevicesNames());
-            }
-            else {
-              std::ostringstream os;
-              os << REPM3_DEVICE_NAME << '-' << nadr;
-              std::string name = os.str();
-              cmdMsg.setSensorDeviceNames({ os.str() });
-            }
-
-            std::vector<uint8_t> cmd = { 2, 4, 79, 3 };
-            cmdMsg.setCommandData(cmd);
-
-            cmdMsg.encodeRequest(reqDoc, a);
-
-            rapidjson::StringBuffer buffer;
-            rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
-            reqDoc.Accept(writer);
-            std::string msgStr = buffer.GetString();
-
-            TRC_DEBUG("reqDoc: " << std::endl << msgStr);
-
-            m_imp->handleApiMessage("", reqDoc, "");
-
-            //updated value
-            ostr << "send cmd: " << encodeBinary(cmd.data(), cmd.size());
-            ;
-          }
-          catch (std::exception& e) {
-            ostr << e.what();
-          }
-        }
-        else if (subcmd == "i") {
-          //forced flush
-          try {
-            int nadr;
-            istr >> nadr;
-
-            rapidjson::Document reqDoc;
-            auto &a = reqDoc.GetAllocator();
-            repm3api::SensorCmdMsg cmdMsg;
-            cmdMsg.setMsgId("test-identification");
-
-            if (nadr < 0) {
-              //get all
-              cmdMsg.setSensorDeviceNames(m_imp->getAllRepM3EdgeDevicesNames());
-            }
-            else {
-              std::ostringstream os;
-              os << REPM3_DEVICE_NAME << '-' << nadr;
-              std::string name = os.str();
-              cmdMsg.setSensorDeviceNames({ os.str() });
-            }
-
-            std::vector<uint8_t> cmd = { 2, 4, 91, 3 };
-            cmdMsg.setCommandData(cmd);
-
-            cmdMsg.encodeRequest(reqDoc, a);
-
-            rapidjson::StringBuffer buffer;
-            rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
-            reqDoc.Accept(writer);
-            std::string msgStr = buffer.GetString();
-
-            TRC_DEBUG("reqDoc: " << std::endl << msgStr);
-
-            m_imp->handleApiMessage("", reqDoc, "");
-
-            //updated value
-            ostr << "send cmd: " << encodeBinary(cmd.data(), cmd.size());
-            ;
-          }
-          catch (std::exception& e) {
-            ostr << e.what();
-          }
-        }
-        else if (subcmd == "gw") {
-          //forced flush
-          try {
-            int sleep;
-            istr >> sleep;
-
-            rapidjson::Document reqDoc;
-            auto &a = reqDoc.GetAllocator();
-            repm3api::GatewayCmdMsg cmdMsg;
-            cmdMsg.setMsgId("gw-sleep");
-
-            auto & sh = cmdMsg.getGatewayItem().getSleepPtr();
-            sh = std::make_shared<bool>(sleep == 0 ? false : true);
-
-            cmdMsg.encodeRequest(reqDoc, a);
-
-            rapidjson::StringBuffer buffer;
-            rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
-            reqDoc.Accept(writer);
-            std::string msgStr = buffer.GetString();
-
-            TRC_DEBUG("reqDoc: " << std::endl << msgStr);
-
-            m_imp->handleApiMessage("", reqDoc, "");
-
-            //updated value
-            ostr << "send cmd to sleep: " << sleep;
-            ;
-          }
-          catch (std::exception& e) {
-            ostr << e.what();
-          }
-        }
-        else {
-          ostr << "usage: " << std::endl;
-          usage(ostr);
-        }
-
-        TRC_FUNCTION_LEAVE("");
-        return ostr.str();
-      }
-
-      std::string getHelp() override
-      {
-        return "Test comm simulation. Type h for help";
-      }
-
-      ~TestCommCommand() {}
-    private:
-      RepM3Edge::Imp* m_imp = nullptr;
-    };
-
-    ///////////////////////////////////////
-    ///////////////////////////////////////
-    class TestCommCommand2 : public shape::ICommand
-    {
-    public:
-      TestCommCommand2() = delete;
-      TestCommCommand2(RepM3Edge::Imp* imp)
-        :m_imp(imp)
-      {
-      }
-
-      void usage(std::ostringstream& ostr)
-      {
-        ostr <<
-          std::left << std::setw(20) << "mc h" << "test comm help" << std::endl <<
-          //std::left << std::setw(20) << "dm v n <+|-|value>" << "get/set value n" << std::endl <<
-          std::left << std::setw(20) << "mc ver" << "get version" << std::endl <<
-          std::left << std::setw(20) << "mc gt" << "get time" << std::endl <<
-          std::left << std::setw(20) << "mc st <sec> <sc>" << "set time, sec: rel in secnds to actual, sc: security" << std::endl <<
-          std::left << std::setw(20) << "mc pst <sec>" << "preset time, sec: rel in secnds to actual" << std::endl <<
-          std::left << std::setw(20) << "mc cpst <sc>" << "change to preset time, , sc: security" << std::endl <<
-          std::endl;
-      }
-
-      std::string doCmd(const std::string& params) override
-      {
-        TRC_FUNCTION_ENTER("");
-
-        std::string cmd;
-        std::string subcmd;
-        std::istringstream istr(params);
-        std::ostringstream ostr;
-
-        istr >> cmd >> subcmd;
-
-        TRC_DEBUG("process: " << PAR(subcmd));
-
-        //////////////
-        if (subcmd == "h") {
-          usage(ostr);
-        }
-        //////////////
         else if (subcmd == "ver") {
           try {
             std::string dotstr;
@@ -911,6 +417,51 @@ namespace lgmc {
             ostr << "version: "
               << ver
               ;
+          }
+          catch (std::exception& e) {
+            ostr << e.what();
+          }
+        }
+        else if (subcmd == "flg") {
+          try {
+            std::string dotstr;
+            istr >> dotstr;
+
+            auto flags = m_imp->getFlags();
+
+            //updated value
+            ostr << "flags: " << std::endl <<
+              flags;
+          }
+          catch (std::exception& e) {
+            ostr << e.what();
+          }
+        }
+        else if (subcmd == "frc") {
+          try {
+            std::string dotstr;
+            istr >> dotstr;
+
+            auto flags = m_imp->getFlagsByFRC();
+
+            //updated value
+            ostr << "flags: " << std::endl <<
+              flags;
+          }
+          catch (std::exception& e) {
+            ostr << e.what();
+          }
+        }
+        else if (subcmd == "frc8") {
+          try {
+            std::string dotstr;
+            istr >> dotstr;
+
+            auto flags = m_imp->getFlagsByFRC8();
+
+            //updated value
+            ostr << "flags: " << std::endl <<
+              flags;
           }
           catch (std::exception& e) {
             ostr << e.what();
@@ -937,13 +488,10 @@ namespace lgmc {
             int shift;
             istr >> shift;
 
-            int sec;
-            istr >> sec;
-
             auto tp = std::chrono::system_clock::now();
             tp += std::chrono::seconds(shift);
 
-            int ret = m_imp->setTime(tp, sec != 0 ? true : false);
+            int ret = m_imp->setTime(tp);
 
             //updated value
             ostr << "requested time: " << encodeTimestamp(tp) << std::endl;
@@ -990,10 +538,33 @@ namespace lgmc {
         else if (subcmd == "cpst") {
           try {
 
-            int sec;
-            istr >> sec;
+            int ret = m_imp->changeRtcToPresetTime();
 
-            int ret = m_imp->changeRtcToPresetTime(sec != 0 ? true : false);
+            //updated value
+            ostr << "status: " << ret;
+            ;
+          }
+          catch (std::exception& e) {
+            ostr << e.what();
+          }
+        }
+        else if (subcmd == "cpst") {
+          try {
+
+            int ret = m_imp->changeRtcToPresetTime();
+
+            //updated value
+            ostr << "status: " << ret;
+            ;
+          }
+          catch (std::exception& e) {
+            ostr << e.what();
+          }
+        }
+        else if (subcmd == "rtc") {
+          try {
+
+            int ret = m_imp->startRtc();
 
             //updated value
             ostr << "status: " << ret;
@@ -1017,7 +588,7 @@ namespace lgmc {
         return "Test comm simulation. Type h for help";
       }
 
-      ~TestCommCommand2() {}
+      ~TestCommCommand() {}
     private:
       RepM3Edge::Imp* m_imp = nullptr;
     };
@@ -1036,7 +607,7 @@ namespace lgmc {
 
       iqrfapi::embed::uart::WriteReadPtr writeRead(shape_new iqrfapi::embed::uart::WriteRead(
         //nadr, 0xffff, san->getReadTimeout(), writeDataVec));
-        1, 0xffff, UART_WR_TOUT, request));
+        2, 0xffff, UART_WR_TOUT, request));
 
       TRC_DEBUG(">>>>>>>>>>>>>>>>> GetVersion: " << NAME_PAR(request, encodeBinary(request.data(), request.size())));
       std::cout << NAME_PAR(request, encodeBinary(request.data(), request.size())) << std::endl;
@@ -1094,7 +665,7 @@ namespace lgmc {
       return tp;
     }
 
-    int setTime(const std::chrono::system_clock::time_point& tp, bool security)
+    int setTime(const std::chrono::system_clock::time_point& tp)
     {
       TRC_FUNCTION_ENTER(NAME_PAR(tp, encodeTimestamp(tp)));
 
@@ -1106,7 +677,7 @@ namespace lgmc {
 
       setTimeAndDate.setTime(tp);
 
-      setTimeAndDate.serialize(request, security);
+      setTimeAndDate.serialize(request);
 
       iqrfapi::embed::uart::WriteReadPtr writeRead(shape_new iqrfapi::embed::uart::WriteRead(
         //nadr, 0xffff, san->getReadTimeout(), writeDataVec));
@@ -1167,7 +738,7 @@ namespace lgmc {
       return presetTimeAndDate.getData().status;
     }
 
-    int changeRtcToPresetTime(bool security)
+    int changeRtcToPresetTime()
     {
       TRC_FUNCTION_ENTER("");
 
@@ -1177,11 +748,11 @@ namespace lgmc {
       std::vector<uint8_t> request;
       std::vector<uint8_t> response;
 
-      cmd.serialize(request, security);
+      cmd.serialize(request);
 
       iqrfapi::embed::uart::WriteReadPtr writeRead(shape_new iqrfapi::embed::uart::WriteRead(
         //nadr, 0xffff, san->getReadTimeout(), writeDataVec));
-        1, 0xffff, UART_WR_TOUT, request));
+        2, 0xffff, UART_WR_TOUT, request));
 
       TRC_DEBUG(">>>>>>>>>>>>>>>>> ChangeRtcToPreset: " << NAME_PAR(request, encodeBinary(request.data(), request.size())));
       std::cout << NAME_PAR(request, encodeBinary(request.data(), request.size())) << std::endl;
@@ -1199,6 +770,291 @@ namespace lgmc {
 
       TRC_FUNCTION_LEAVE(NAME_PAR(status, cmd.getData().status));
       return cmd.getData().status;
+    }
+
+    int startRtc()
+    {
+      TRC_FUNCTION_ENTER("");
+
+      std::lock_guard<std::mutex> lck(m_deviceMtx);
+
+      StartRtcCmd cmd;
+      std::vector<uint8_t> request;
+      std::vector<uint8_t> response;
+
+      cmd.serialize(request);
+
+      iqrfapi::embed::uart::WriteReadPtr writeRead(shape_new iqrfapi::embed::uart::WriteRead(
+        //nadr, 0xffff, san->getReadTimeout(), writeDataVec));
+        2, 0xffff, UART_WR_TOUT, request));
+
+      TRC_DEBUG(">>>>>>>>>>>>>>>>> StartRtc: " << NAME_PAR(request, encodeBinary(request.data(), request.size())));
+      std::cout << NAME_PAR(request, encodeBinary(request.data(), request.size())) << std::endl;
+
+      writeRead->setInstanceMsgId();
+      writeRead->setVerbose(true);
+
+      m_iIqrfAdapt->executeMsgTransaction(writeRead, 120000);
+      response = writeRead->getReadData();
+
+      TRC_DEBUG(">>>>>>>>>>>>>>>>> StartRtc: " << NAME_PAR(response, encodeBinary(response.data(), response.size())));
+      std::cout << NAME_PAR(response, encodeBinary(response.data(), response.size())) << std::endl;
+
+      cmd.deserialize(response);
+
+      TRC_FUNCTION_LEAVE(NAME_PAR(status, cmd.getData().status));
+      return cmd.getData().status;
+    }
+
+    std::string getFlags()
+    {
+      TRC_FUNCTION_ENTER("");
+
+      std::lock_guard<std::mutex> lck(m_deviceMtx);
+
+      GetFlags cmd;
+      std::vector<uint8_t> request;
+      std::vector<uint8_t> response;
+
+      cmd.serialize(request);
+
+      iqrfapi::embed::uart::WriteReadPtr writeRead(shape_new iqrfapi::embed::uart::WriteRead(
+        0x02, 0xffff, UART_WR_TOUT, request));
+
+      TRC_DEBUG(">>>>>>>>>>>>>>>>> GetFlags: " << NAME_PAR(request, encodeBinary(request.data(), request.size())));
+      std::cout << NAME_PAR(request, encodeBinary(request.data(), request.size())) << std::endl;
+
+      writeRead->setInstanceMsgId();
+      writeRead->setVerbose(true);
+
+      m_iIqrfAdapt->executeMsgTransaction(writeRead, 120000);
+      response = writeRead->getReadData();
+
+      TRC_DEBUG(">>>>>>>>>>>>>>>>> GetFlags: " << NAME_PAR(response, encodeBinary(response.data(), response.size())));
+      std::cout << NAME_PAR(response, encodeBinary(response.data(), response.size())) << std::endl;
+
+      cmd.deserialize(response);
+
+      std::ostringstream os;
+      os <<
+        "green: " << (unsigned)cmd.getData().info_flags.data <<
+        " yellow: " << (unsigned)cmd.getData().warning_flags.data <<
+        " red: " << (unsigned)cmd.getData().error_flags.data <<
+        " system: " << (unsigned)cmd.getData().system_status_info.data <<
+        " additional: " << (unsigned)cmd.getData().additional_status_info.data;
+
+      TRC_FUNCTION_LEAVE("");
+      return os.str();
+    }
+
+    std::string getFlagsByFRC()
+    {
+      TRC_FUNCTION_ENTER("");
+
+      std::lock_guard<std::mutex> lck(m_deviceMtx);
+
+      /*
+      {
+        GetFlags cmd;
+        std::vector<uint8_t> request;
+        std::vector<uint8_t> response;
+
+        cmd.serialize(request);
+
+        iqrfapi::embed::uart::WriteReadPtr writeRead(shape_new iqrfapi::embed::uart::WriteRead(
+          0xff, 0xffff, UART_WR_TOUT, request)); // broadcast NADR
+
+        TRC_DEBUG(">>>>>>>>>>>>>>>>> GetFlags: " << NAME_PAR(request, encodeBinary(request.data(), request.size())));
+        std::cout << NAME_PAR(request, encodeBinary(request.data(), request.size())) << std::endl;
+
+        writeRead->setInstanceMsgId();
+        writeRead->setVerbose(true);
+
+        m_iIqrfAdapt->executeMsgTransaction(writeRead, 120000);
+
+        response = writeRead->getReadData();
+      }
+      */
+
+      //the same with ACK broadcast
+      /*
+      {
+        std::set<int> unreachableNodes;
+        std::set<int> ackNodes;
+
+        GetFlags cmd;
+        std::vector<uint8_t> request;
+
+        cmd.serialize(request);
+
+        const uint8_t pnum = 0x0C; // uart
+        const uint8_t pcmd = 0x02; // ReadWrite
+        uint16_t hwpid = 0xFFFF; //Hwpid
+        std::vector<uint8_t> cmdVec = { 4 }; //prepend wait 40 ms when sent by selectiveBatch
+        cmdVec.insert(cmdVec.end(), request.begin(), request.end());
+
+        iqrfapi::embed::frc::AcknowledgedBroadcastBitsPtr frcMsg(shape_new iqrfapi::embed::frc::AcknowledgedBroadcastBits(pnum, pcmd, hwpid, cmdVec));
+
+        std::ostringstream os;
+        os << frcMsg->getMsgId() << "-extra";
+        iqrfapi::embed::frc::ExtraResultPtr extraMsg(shape_new iqrfapi::embed::frc::ExtraResult());
+        extraMsg->setMsgId(os.str());
+
+        m_iIqrfAdapt->executeMsgTransaction(frcMsg, 60000);
+        m_iIqrfAdapt->executeMsgTransaction(extraMsg, 3000);
+
+        frcMsg->getFrcDataAs2bit(ackNodes, extraMsg->getFrcData());
+
+        //unreachableNodes = oegw::iqrfadapt::substractSet(nadrSet, ackNodes);
+
+        //unreachableNodes = oegw::iqrfadapt::substractSet(nadrSet, ackNodes);
+
+        ////trace unreachable
+        //if (unreachableNodes.size() > 0) {
+        //  std::ostringstream os;
+        //  for (int node : unreachableNodes) {
+        //    os << node << ", ";
+        //  }
+        //  TRC_WARNING("DATA_FROM_NODE is not delivered to unreachable nodes: " << os.str())
+        //}
+      }
+      */
+
+      //we believe the TRs got it => now we can download flags status by FRC
+
+      std::ostringstream osres;
+      //getFlags FRC
+      {
+        std::map<int, int> nadrFlagsMap;
+
+        iqrfapi::embed::frc::SendPtr frcMsg(shape_new iqrfapi::embed::frc::Send(0x10, { 0x5E, 0x81, 0x00 }));
+        frcMsg->setVerbose(true);
+
+        std::ostringstream os;
+        os << frcMsg->getMsgId() << "-extra";
+        iqrfapi::embed::frc::ExtraResultPtr extraMsg(shape_new iqrfapi::embed::frc::ExtraResult());
+        extraMsg->setMsgId(os.str());
+
+        m_iIqrfAdapt->executeMsgTransaction(frcMsg, 60000);
+        m_iIqrfAdapt->executeMsgTransaction(extraMsg, 3000);
+
+        frcMsg->getFrcDataAs2bit(nadrFlagsMap, extraMsg->getFrcData());
+
+        int inc = 0;
+        for (auto& it : nadrFlagsMap) {
+          osres << '[' << it.first << ',' << it.second << "]  ";
+          if (++inc % 8 == 0) osres << std::endl;
+        }
+      
+      }
+
+      TRC_FUNCTION_LEAVE(osres.str());
+      return osres.str();
+    }
+
+    std::string getFlagsByFRC8()
+    {
+      TRC_FUNCTION_ENTER("");
+
+      std::lock_guard<std::mutex> lck(m_deviceMtx);
+
+      /*
+      {
+        GetFlags cmd;
+        std::vector<uint8_t> request;
+        std::vector<uint8_t> response;
+
+        cmd.serialize(request);
+
+        iqrfapi::embed::uart::WriteReadPtr writeRead(shape_new iqrfapi::embed::uart::WriteRead(
+          0xFF, 0xffff, UART_WR_TOUT, request)); // broadcast NADR
+
+        TRC_DEBUG(">>>>>>>>>>>>>>>>> GetFlags: " << NAME_PAR(request, encodeBinary(request.data(), request.size())));
+        std::cout << NAME_PAR(request, encodeBinary(request.data(), request.size())) << std::endl;
+
+        writeRead->setInstanceMsgId();
+        writeRead->setVerbose(true);
+
+        m_iIqrfAdapt->executeMsgTransaction(writeRead, 120000);
+
+        response = writeRead->getReadData();
+      }
+      */
+
+      //the same with ACK broadcast
+      /*
+      {
+        std::set<int> unreachableNodes;
+        std::set<int> ackNodes;
+
+        GetFlags cmd;
+        std::vector<uint8_t> request;
+
+        cmd.serialize(request);
+
+        const uint8_t pnum = 0x0C; // uart
+        const uint8_t pcmd = 0x02; // ReadWrite
+        uint16_t hwpid = 0xFFFF; //Hwpid
+        std::vector<uint8_t> cmdVec = { 4 }; //prepend wait 40 ms when sent by selectiveBatch
+        cmdVec.insert(cmdVec.end(), request.begin(), request.end());
+
+        iqrfapi::embed::frc::AcknowledgedBroadcastBitsPtr frcMsg(shape_new iqrfapi::embed::frc::AcknowledgedBroadcastBits(pnum, pcmd, hwpid, cmdVec));
+
+        std::ostringstream os;
+        os << frcMsg->getMsgId() << "-extra";
+        iqrfapi::embed::frc::ExtraResultPtr extraMsg(shape_new iqrfapi::embed::frc::ExtraResult());
+        extraMsg->setMsgId(os.str());
+
+        m_iIqrfAdapt->executeMsgTransaction(frcMsg, 60000);
+        m_iIqrfAdapt->executeMsgTransaction(extraMsg, 3000);
+
+        frcMsg->getFrcDataAs2bit(ackNodes, extraMsg->getFrcData());
+
+        //unreachableNodes = oegw::iqrfadapt::substractSet(nadrSet, ackNodes);
+
+        //unreachableNodes = oegw::iqrfadapt::substractSet(nadrSet, ackNodes);
+
+        ////trace unreachable
+        //if (unreachableNodes.size() > 0) {
+        //  std::ostringstream os;
+        //  for (int node : unreachableNodes) {
+        //    os << node << ", ";
+        //  }
+        //  TRC_WARNING("DATA_FROM_NODE is not delivered to unreachable nodes: " << os.str())
+        //}
+      }
+      */
+
+      //we believe the TRs got it => now we can download flags status by FRC
+
+      std::ostringstream osres;
+      //getFlags FRC
+      {
+        std::map<int, uint8_t> nadrFlagsMap;
+
+        iqrfapi::embed::frc::SendPtr frcMsg(shape_new iqrfapi::embed::frc::Send(0x90, { 0x5E, 0x81, 0x00 }));
+        frcMsg->setVerbose(true);
+
+        std::ostringstream os;
+        os << frcMsg->getMsgId() << "-extra";
+        iqrfapi::embed::frc::ExtraResultPtr extraMsg(shape_new iqrfapi::embed::frc::ExtraResult());
+        extraMsg->setMsgId(os.str());
+
+        m_iIqrfAdapt->executeMsgTransaction(frcMsg, 60000);
+        m_iIqrfAdapt->executeMsgTransaction(extraMsg, 3000);
+
+        frcMsg->getFrcDataAs(nadrFlagsMap, extraMsg->getFrcData());
+
+        int inc = 0;
+        for (auto& it : nadrFlagsMap) {
+          osres << '[' << it.first << ',' << (int)it.second << "]  ";
+          if (++inc % 8 == 0) osres << std::endl;
+        }
+
+      }
+
+      TRC_FUNCTION_LEAVE(osres.str());
+      return osres.str();
     }
 
     /////////////////////////////////////////////
@@ -1341,13 +1197,13 @@ namespace lgmc {
     void attachInterface(shape::ICommandService* iface)
     {
       m_iCommandService = iface;
-      m_iCommandService->addCommand("sn", std::shared_ptr<shape::ICommand>(shape_new TestCommCommand(this)));
+      m_iCommandService->addCommand("mc", std::shared_ptr<shape::ICommand>(shape_new TestCommCommand(this)));
     }
 
     void detachInterface(shape::ICommandService* iface)
     {
       if (m_iCommandService == iface) {
-        m_iCommandService->removeCommand("sn");
+        m_iCommandService->removeCommand("mc");
         m_iCommandService = nullptr;
       }
     }

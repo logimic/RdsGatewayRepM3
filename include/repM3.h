@@ -922,12 +922,12 @@ template <typename S, typename R>
         UINT8 status;
       };
 
-      void serialize(std::vector<uint8_t> &d, bool security = false) {
-        d = impl.serialize(m_time, security);
+      void serialize(std::vector<uint8_t> &d) {
+        d = impl.serialize(m_time, true);
       }
 
-      std::vector<uint8_t> serialize(bool security = false) {
-        return impl.serialize(m_time, security);
+      std::vector<uint8_t> serialize() {
+        return impl.serialize(m_time, true);
       }
 
       void deserialize(const std::vector<uint8_t> &d) {
@@ -998,23 +998,31 @@ template <typename S, typename R>
     data_send_t m_time;
   };
 
-  class StartRtc {
+  class StartRtcCmd {
     public:
      
+      struct data_t {
+        UINT8 status;
+      };
+
       void serialize(std::vector<uint8_t> &d) {
         d = impl.serialize(); 
       }
 
       std::vector<uint8_t> serialize() {
-        return impl.serialize();
+        return impl.serialize(true);
       }
 
       void deserialize(const std::vector<uint8_t> &d) {
         impl.deserialize(d);
       }
 
+      data_t getData() {
+        return impl.getType();
+      }
+
   private:
-    Impl<none, none, CMD_START_RTC> impl;
+    Impl<none, StartRtcCmd::data_t, CMD_START_RTC> impl;
   };
 
   class ChangeRtcToPresetCmd {
@@ -1025,12 +1033,12 @@ template <typename S, typename R>
         FLAGS8 result;
       };
 
-      void serialize(std::vector<uint8_t> &d, bool security = false) {
-        d = impl.serialize(security); 
+      void serialize(std::vector<uint8_t> &d) {
+        d = impl.serialize(true); 
       }
 
-      std::vector<uint8_t> serialize(bool security = false) {
-        return impl.serialize(security);
+      std::vector<uint8_t> serialize() {
+        return impl.serialize(true);
       }
 
       void deserialize(const std::vector<uint8_t> &d) {
@@ -1071,9 +1079,9 @@ class GetFlagsCmd {
     public:
       
       PACK(struct data_t {
-        FLAGS16 info_flags;
-        FLAGS16 warning_flags;
-        FLAGS16 error_flags;
+        FLAGS16 info_flags; //green
+        FLAGS16 warning_flags; //yellow
+        FLAGS16 error_flags; //red
         FLAGS8 system_status_info;
         FLAGS8 additional_status_info;
       });

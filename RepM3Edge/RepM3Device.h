@@ -9,6 +9,7 @@ namespace lgmc {
 
   static const std::string REPM3_DEVICE_NAME("RepM3Device");
 
+  /*
   enum class InstructionTypes {
     UNKNOWN = 0x00,
     STX = 0x02,
@@ -76,28 +77,7 @@ namespace lgmc {
     }
   };
   typedef shape::EnumStringConvertor<InstructionTypes, InstructionTypesConvertTable> InstructionTypesConvert;
-
-  ////////////////////////////////////
-  const std::vector<uint8_t> cmdVec_DATA_FROM_NODE = {
-    (uint8_t)InstructionTypes::STX
-    , 4 //len
-    , (uint8_t)InstructionTypes::DATA_FROM_NODE
-    , (uint8_t)InstructionTypes::ETX
-  };
-
-  const std::vector<uint8_t> cmdVec_ACKNOWLEDGE_TO_NODE = {
-    (uint8_t)InstructionTypes::STX
-    , 4 //len
-    , (uint8_t)InstructionTypes::ACKNOWLEDGE_TO_NODE
-    , (uint8_t)InstructionTypes::ETX
-  };
-
-  const std::vector<uint8_t> cmdVec_GET_STATE = {
-    (uint8_t)InstructionTypes::STX
-    , 4 //len
-    , (uint8_t)InstructionTypes::GET_STATE
-    , (uint8_t)InstructionTypes::ETX
-  };
+  */
 
   class RepM3Device
   {
@@ -130,30 +110,9 @@ namespace lgmc {
       return m_node;
     }
 
-    const std::vector<uint8_t> & getParamGetState() const
-    {
-      return m_paramGetState;
-    }
-
-    void setParamGetState(const std::vector<uint8_t> & paramGetState)
-    {
-      m_paramGetState = paramGetState;
-    }
-
-    const std::vector<uint8_t> & getDataFromNode() const
-    {
-      return m_dataFromNode;
-    }
-
-    void setDataFromNode(const std::vector<uint8_t> & dataFromNode)
-    {
-      m_dataFromNode = dataFromNode;
-    }
-
     int m_lastGetStatePeriod = -1;
-    int m_getStateCnt = 0; //for debug
-    int m_dataFromNodeCnt = 0;
 
+    /*
     void setCommand(uint8_t cmdNum, const std::vector<uint8_t> & cmd)
     {
       m_cmdMap[cmdNum] = cmd;
@@ -170,27 +129,25 @@ namespace lgmc {
       }
       return retval;
     }
+    */
 
   private:
     std::string m_name;
 
-    // read data from device by DATA_FROM_NODE
-    std::vector<uint8_t> m_dataFromNode;
-
-    // read param from device by GET_STATE
-    std::vector<uint8_t> m_paramGetState;
-
+    /*
     // buffered commands
     // cmd num is key
     typedef std::map<uint8_t, std::vector<uint8_t>> CmdMap;
     CmdMap m_cmdMap;
+    */
 
     bool m_isActive = false;
-    
     // related IQRF node
     oegw::iqrfapi::Node m_node;
-
     std::chrono::system_clock::time_point m_lastUpdate;
+
+    uint8_t m_flagsFrcRes;
+
   };
   typedef std::shared_ptr<RepM3Device> RepM3DeviceShPtr;
 }
